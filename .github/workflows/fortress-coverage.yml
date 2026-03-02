@@ -190,7 +190,7 @@ jobs:
       - name: 💾 Restore go-coverage binary cache (production)
         id: go-coverage-cache
         if: env.GO_COVERAGE_USE_LOCAL != 'true'
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             ~/.cache/go-coverage-bin
@@ -201,7 +201,7 @@ jobs:
       - name: 💾 Restore go-coverage binary cache (local)
         id: go-coverage-local-cache
         if: env.GO_COVERAGE_USE_LOCAL == 'true'
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             ~/.cache/go-coverage-local
@@ -2263,7 +2263,7 @@ jobs:
       # --------------------------------------------------------------------
       - name: 📤 Upload performance cache statistics
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: cache-stats-coverage
           path: cache-stats-coverage.json
@@ -2274,7 +2274,7 @@ jobs:
       # --------------------------------------------------------------------
       - name: 📤 Upload coverage statistics
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-stats-internal
           path: coverage-stats-internal-*.json
@@ -2306,7 +2306,7 @@ jobs:
       - name: 📤 Upload coverage history artifacts
         # Upload history for all branches to preserve trend data
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-history-${{ inputs.commit-sha }}
           path: .github/coverage/history/*.json
@@ -2451,7 +2451,7 @@ jobs:
 
       - name: 📤 Upload coverage statistics (Codecov)
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-stats-codecov
           path: coverage-stats-codecov-*.json
