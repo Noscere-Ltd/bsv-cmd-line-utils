@@ -58,7 +58,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if input == "" {
-		cmd.Help() //nolint:errcheck
+		_ = cmd.Help()
 		return fmt.Errorf("no address or public key provided")
 	}
 
@@ -69,7 +69,7 @@ func run(cmd *cobra.Command, args []string) error {
 	return validateModeRun(input)
 }
 
-func getInput(cmd *cobra.Command, args []string) (string, error) {
+func getInput(_ *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -175,22 +175,22 @@ func c(color, text string) string {
 }
 
 func printValidateHuman(result *validateResult) {
-	fmt.Printf("%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
+	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
 	validStr := "yes"
 	if !result.Valid {
 		validStr = "no"
 	}
-	fmt.Printf("%s   %s\n", c(colorDim, "Valid:"), c(colorGreen, validStr))
+	fmt.Fprintf(os.Stdout, "%s   %s\n", c(colorDim, "Valid:"), c(colorGreen, validStr))
 	if result.Valid {
-		fmt.Printf("%s %s\n", c(colorDim, "Network:"), c(colorGreen, result.Network))
-		fmt.Printf("%s %s\n", c(colorDim, "Hash160:"), c(colorGreen, result.Hash160))
+		fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Network:"), c(colorGreen, result.Network))
+		fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Hash160:"), c(colorGreen, result.Hash160))
 	}
 }
 
 func printDeriveHuman(result *deriveResult) {
-	fmt.Printf("%s %s\n", c(colorDim, "Public Key:"), c(colorGreen, result.PublicKey))
-	fmt.Printf("%s  %s\n", c(colorDim, "Mainnet:"), c(colorGreen, result.Mainnet))
-	fmt.Printf("%s  %s\n", c(colorDim, "Testnet:"), c(colorGreen, result.Testnet))
+	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Public Key:"), c(colorGreen, result.PublicKey))
+	fmt.Fprintf(os.Stdout, "%s  %s\n", c(colorDim, "Mainnet:"), c(colorGreen, result.Mainnet))
+	fmt.Fprintf(os.Stdout, "%s  %s\n", c(colorDim, "Testnet:"), c(colorGreen, result.Testnet))
 }
 
 func init() {

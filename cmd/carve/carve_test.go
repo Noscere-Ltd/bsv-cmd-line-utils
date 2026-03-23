@@ -291,7 +291,7 @@ func TestParseUTXOResponse(t *testing.T) {
 
 		utxos, err := parseUTXOResponse(jsonResponse)
 		require.NoError(t, err)
-		assert.Len(t, utxos, 0)
+		assert.Empty(t, utxos)
 	})
 
 	t.Run("API error in response", func(t *testing.T) {
@@ -334,7 +334,7 @@ func TestParseUTXOResponse(t *testing.T) {
 
 		utxos, err := parseUTXOResponse(jsonResponse)
 		require.NoError(t, err)
-		assert.Len(t, utxos, 0)
+		assert.Empty(t, utxos)
 	})
 }
 

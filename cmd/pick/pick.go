@@ -21,6 +21,7 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -76,7 +77,7 @@ Multiple selections can be combined in one call.`,
 func run(cmd *cobra.Command, args []string) error {
 	// Check if any selector was specified
 	if !hasAnySelector() {
-		cmd.Help()
+		_ = cmd.Help()
 		return fmt.Errorf("no selector specified")
 	}
 
@@ -87,7 +88,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if txHex == "" {
-		cmd.Help()
+		_ = cmd.Help()
 		return fmt.Errorf("no transaction provided")
 	}
 
@@ -151,7 +152,7 @@ func getTransactionHex(args []string) (string, error) {
 func resolveInput(input string) (string, error) {
 	// Check if it's a file URL
 	if path, found := strings.CutPrefix(input, "file://"); found {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: user-provided path is intentional
 		if err != nil {
 			return "", fmt.Errorf("reading file: %w", err)
 		}
@@ -160,36 +161,45 @@ func resolveInput(input string) (string, error) {
 
 	// Check if it's an HTTP/HTTPS URL
 	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
-		resp, err := http.Get(input)
-		if err != nil {
-			return "", fmt.Errorf("fetching URL: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("HTTP error: %d", resp.StatusCode)
-		}
-
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", fmt.Errorf("reading response: %w", err)
-		}
-		return cli.CleanString(string(data)), nil
+		return fetchFromURL(input)
 	}
 
 	// It's a raw hex string
 	return input, nil
 }
 
+// fetchFromURL fetches content from an HTTP/HTTPS URL.
+func fetchFromURL(url string) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetching URL: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP error: %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response: %w", err)
+	}
+	return cli.CleanString(string(data)), nil
+}
+
 // extractAndOutput extracts selected elements and prints them to stdout.
 func extractAndOutput(tx *transaction.Transaction) error {
 	// Transaction-level fields
 	if getVersion {
-		fmt.Println(encodeUint32LE(tx.Version))
+		fmt.Fprintln(os.Stdout, encodeUint32LE(tx.Version))
 	}
 
 	if getTxID {
-		fmt.Println(tx.TxID().String())
+		fmt.Fprintln(os.Stdout, tx.TxID().String())
 	}
 
 	// Output selections
@@ -198,7 +208,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	for _, idx := range outputScripts {
@@ -206,7 +216,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	for _, idx := range outputValues {
@@ -214,7 +224,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	// Input selections
@@ -223,7 +233,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	for _, idx := range inputScripts {
@@ -231,7 +241,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	for _, idx := range inputPrevTxIDs {
@@ -239,7 +249,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	for _, idx := range inputPrevOuts {
@@ -247,7 +257,7 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	for _, idx := range inputSequences {
@@ -255,12 +265,12 @@ func extractAndOutput(tx *transaction.Transaction) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(hex)
+		fmt.Fprintln(os.Stdout, hex)
 	}
 
 	// Locktime (output last to match transaction order)
 	if getLocktime {
-		fmt.Println(encodeUint32LE(tx.LockTime))
+		fmt.Fprintln(os.Stdout, encodeUint32LE(tx.LockTime))
 	}
 
 	return nil

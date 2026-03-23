@@ -34,7 +34,7 @@ targets:
   default: "MINED"
   wait_for_mining: true
 `
-		err := os.WriteFile(configPath, []byte(configContent), 0o644)
+		err := os.WriteFile(configPath, []byte(configContent), 0o600)
 		require.NoError(t, err)
 
 		cfg, err := LoadFromPath(configPath)
@@ -50,7 +50,7 @@ targets:
 
 		assert.Equal(t, "5s", cfg.Polling.Interval)
 		assert.Equal(t, 10, cfg.Polling.MaxRetries)
-		assert.Equal(t, 1.5, cfg.Polling.BackoffFactor)
+		assert.InEpsilon(t, 1.5, cfg.Polling.BackoffFactor, 1e-9)
 
 		assert.Equal(t, "MINED", cfg.Targets.Default)
 		assert.True(t, cfg.Targets.WaitForMining)
@@ -73,7 +73,7 @@ arc-mainnet:
   url: [invalid yaml
   this is broken
 `
-		err := os.WriteFile(configPath, []byte(invalidYAML), 0o644)
+		err := os.WriteFile(configPath, []byte(invalidYAML), 0o600)
 		require.NoError(t, err)
 
 		_, err = LoadFromPath(configPath)
@@ -86,7 +86,7 @@ arc-mainnet:
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.yaml")
 
-		err := os.WriteFile(configPath, []byte(""), 0o644)
+		err := os.WriteFile(configPath, []byte(""), 0o600)
 		require.NoError(t, err)
 
 		cfg, err := LoadFromPath(configPath)
@@ -94,8 +94,8 @@ arc-mainnet:
 		require.NotNil(t, cfg)
 
 		// All fields should be zero values
-		assert.Equal(t, "", cfg.ARCMainnet.URL)
-		assert.Equal(t, "", cfg.ARCTestnet.URL)
+		assert.Empty(t, cfg.ARCMainnet.URL)
+		assert.Empty(t, cfg.ARCTestnet.URL)
 	})
 
 	t.Run("partial config", func(t *testing.T) {
@@ -107,7 +107,7 @@ arc-mainnet:
 arc-mainnet:
   url: "https://api.taal.com/arc"
 `
-		err := os.WriteFile(configPath, []byte(partialConfig), 0o644)
+		err := os.WriteFile(configPath, []byte(partialConfig), 0o600)
 		require.NoError(t, err)
 
 		cfg, err := LoadFromPath(configPath)
@@ -115,8 +115,8 @@ arc-mainnet:
 		require.NotNil(t, cfg)
 
 		assert.Equal(t, "https://api.taal.com/arc", cfg.ARCMainnet.URL)
-		assert.Equal(t, "", cfg.ARCMainnet.APIKey) // Not set
-		assert.Equal(t, "", cfg.ARCTestnet.URL)    // Not set
+		assert.Empty(t, cfg.ARCMainnet.APIKey) // Not set
+		assert.Empty(t, cfg.ARCTestnet.URL)    // Not set
 	})
 
 	t.Run("extra fields ignored", func(t *testing.T) {
@@ -131,7 +131,7 @@ arc-mainnet:
 unknown_section:
   foo: "bar"
 `
-		err := os.WriteFile(configPath, []byte(configWithExtra), 0o644)
+		err := os.WriteFile(configPath, []byte(configWithExtra), 0o600)
 		require.NoError(t, err)
 
 		cfg, err := LoadFromPath(configPath)
@@ -177,8 +177,8 @@ func TestGetARCConfig(t *testing.T) {
 		t.Parallel()
 		emptyConfig := &Config{}
 		result := emptyConfig.GetARCConfig(false)
-		assert.Equal(t, "", result.URL)
-		assert.Equal(t, "", result.APIKey)
+		assert.Empty(t, result.URL)
+		assert.Empty(t, result.APIKey)
 	})
 }
 
@@ -274,7 +274,7 @@ arc-mainnet:
   api_key: "test-key"
   timeout: "45s"
 `
-		err := os.WriteFile(configPath, []byte(configContent), 0o644)
+		err := os.WriteFile(configPath, []byte(configContent), 0o600)
 		require.NoError(t, err)
 
 		cfg, err := LoadFromPath(configPath)
@@ -298,7 +298,7 @@ polling:
   max_retries: 5
   backoff_factor: 2.0
 `
-	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	err := os.WriteFile(configPath, []byte(configContent), 0o600)
 	require.NoError(t, err)
 
 	cfg, err := LoadFromPath(configPath)
@@ -306,7 +306,7 @@ polling:
 
 	assert.Equal(t, "10s", cfg.Polling.Interval)
 	assert.Equal(t, 5, cfg.Polling.MaxRetries)
-	assert.Equal(t, 2.0, cfg.Polling.BackoffFactor)
+	assert.InEpsilon(t, 2.0, cfg.Polling.BackoffFactor, 1e-9)
 }
 
 func TestTargetsConfigStruct(t *testing.T) {
@@ -320,7 +320,7 @@ targets:
   default: "SEEN_ON_NETWORK"
   wait_for_mining: false
 `
-	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	err := os.WriteFile(configPath, []byte(configContent), 0o600)
 	require.NoError(t, err)
 
 	cfg, err := LoadFromPath(configPath)
@@ -331,7 +331,7 @@ targets:
 }
 
 // Test Load() function which uses default paths
-// Note: This test modifies the working directory, so it's not parallelized
+// This test modifies the working directory, so it's not parallelized
 func TestLoad(t *testing.T) {
 	// Save current directory
 	originalDir, err := os.Getwd()
@@ -348,7 +348,7 @@ func TestLoad(t *testing.T) {
 arc-mainnet:
   url: "https://current-dir.example.com"
 `
-		err := os.WriteFile(configPath, []byte(configContent), 0o644)
+		err := os.WriteFile(configPath, []byte(configContent), 0o600)
 		require.NoError(t, err)
 
 		// Change to temp directory
@@ -389,7 +389,7 @@ func TestLoadFromPathEmptyPath(t *testing.T) {
 arc-mainnet:
   url: "https://empty-path-test.example.com"
 `
-	err = os.WriteFile(configPath, []byte(configContent), 0o644)
+	err = os.WriteFile(configPath, []byte(configContent), 0o600)
 	require.NoError(t, err)
 
 	// Change to temp directory

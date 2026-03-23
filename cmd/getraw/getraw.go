@@ -50,7 +50,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if transactionID == "" {
-			cmd.Help()
+			_ = cmd.Help()
 			return fmt.Errorf("no txid provided")
 		}
 
@@ -64,7 +64,7 @@ var rootCmd = &cobra.Command{
 }
 
 // getTransactionID retrieves the transaction ID from argument, flag, or stdin.
-func getTransactionID(cmd *cobra.Command, args []string) (string, error) {
+func getTransactionID(_ *cobra.Command, args []string) (string, error) {
 	// Get txid from command line argument if provided
 	if len(args) > 0 {
 		return args[0], nil
@@ -117,7 +117,7 @@ func getRawFromWhatsOnChain(txid string) error {
 	}
 
 	// Print the raw transaction hex
-	fmt.Println(rawTx)
+	fmt.Fprintln(os.Stdout, rawTx)
 	return nil
 }
 

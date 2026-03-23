@@ -72,7 +72,7 @@ func LoadFromPath(path string) (*Config, error) {
 		}
 	}
 
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(configPath) //nolint:gosec // G304: config file path is user-controlled by design
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

@@ -113,7 +113,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if wifString == "" {
-		cmd.Help() //nolint:errcheck
+		_ = cmd.Help()
 		return fmt.Errorf("no WIF provided")
 	}
 
@@ -131,7 +131,7 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 // getWIF retrieves the WIF string from argument, flag, or stdin.
-func getWIF(cmd *cobra.Command, args []string) (string, error) {
+func getWIF(_ *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -306,37 +306,37 @@ func c(color, text string) string {
 func printHuman(result *wifInfoResult) {
 	line := "────────────────────────────────────────────────────────────────────────"
 
-	fmt.Println(c(colorWhite, line))
-	fmt.Printf("%s %s\n", c(colorDim, "Input WIF:"), c(colorGreen, result.Input.WIF))
-	fmt.Printf("%s  %s\n", c(colorDim, "Network:"), c(colorGreen, result.Input.Network))
+	fmt.Fprintln(os.Stdout, c(colorWhite, line))
+	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Input WIF:"), c(colorGreen, result.Input.WIF))
+	fmt.Fprintf(os.Stdout, "%s  %s\n", c(colorDim, "Network:"), c(colorGreen, result.Input.Network))
 	compressed := "yes"
 	if !result.Input.Compressed {
 		compressed = "no"
 	}
-	fmt.Printf("%s %s\n", c(colorDim, "Compressed:"), c(colorGreen, compressed))
+	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Compressed:"), c(colorGreen, compressed))
 
-	fmt.Printf("\n%s\n", c(colorDim, "Public Key:"))
-	fmt.Printf("  %s %s\n", c(colorDim, "Compressed:"), c(colorGreen, result.PublicKey.Compressed))
+	fmt.Fprintf(os.Stdout, "\n%s\n", c(colorDim, "Public Key:"))
+	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Compressed:"), c(colorGreen, result.PublicKey.Compressed))
 	if result.PublicKey.Uncompressed != "" {
-		fmt.Printf("  %s %s\n", c(colorDim, "Uncompressed:"), c(colorGreen, result.PublicKey.Uncompressed))
+		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Uncompressed:"), c(colorGreen, result.PublicKey.Uncompressed))
 	}
 
-	fmt.Printf("\n%s\n", c(colorWhite, "MAINNET"))
-	fmt.Printf("  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Mainnet.WIF.Compressed))
-	fmt.Printf("  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Mainnet.Address.Compressed))
+	fmt.Fprintf(os.Stdout, "\n%s\n", c(colorWhite, "MAINNET"))
+	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Mainnet.WIF.Compressed))
+	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Mainnet.Address.Compressed))
 	if showUncompr {
-		fmt.Printf("  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Mainnet.WIF.Uncompressed))
-		fmt.Printf("  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Mainnet.Address.Uncompressed))
+		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Mainnet.WIF.Uncompressed))
+		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Mainnet.Address.Uncompressed))
 	}
 
-	fmt.Printf("\n%s\n", c(colorWhite, "TESTNET"))
-	fmt.Printf("  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Testnet.WIF.Compressed))
-	fmt.Printf("  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Testnet.Address.Compressed))
+	fmt.Fprintf(os.Stdout, "\n%s\n", c(colorWhite, "TESTNET"))
+	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Testnet.WIF.Compressed))
+	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Testnet.Address.Compressed))
 	if showUncompr {
-		fmt.Printf("  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Testnet.WIF.Uncompressed))
-		fmt.Printf("  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Testnet.Address.Uncompressed))
+		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Testnet.WIF.Uncompressed))
+		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Testnet.Address.Uncompressed))
 	}
-	fmt.Println(c(colorWhite, line))
+	fmt.Fprintln(os.Stdout, c(colorWhite, line))
 }
 
 // init initializes the cobra command flags.

@@ -60,7 +60,7 @@ func run() error {
 	}
 
 	// Validate config
-	if err := cfg.Validate(testnet); err != nil {
+	if err = cfg.Validate(testnet); err != nil {
 		return err
 	}
 
@@ -79,7 +79,7 @@ func run() error {
 		return fmt.Errorf("input is not a valid hex string")
 	}
 
-	fmt.Printf("Transaction hex: %s\n", txString)
+	fmt.Fprintf(os.Stdout, "Transaction hex: %s\n", txString)
 
 	// Broadcast transaction using ARC
 	return broadcastTransaction(cfg, txString)
@@ -101,15 +101,15 @@ func broadcastTransaction(cfg *config.Config, rawTx string) error {
 	arcConfig := cfg.GetARCConfig(testnet)
 
 	if testnet {
-		fmt.Println("Using testnet configuration")
+		fmt.Fprintln(os.Stdout, "Using testnet configuration")
 	} else {
-		fmt.Println("Using mainnet configuration")
+		fmt.Fprintln(os.Stdout, "Using mainnet configuration")
 	}
 
 	// Create ARC client
 	client := arc.NewARCClient(arcConfig.URL, arcConfig.APIKey)
 
-	fmt.Println("Broadcasting transaction to ARC...")
+	fmt.Fprintln(os.Stdout, "Broadcasting transaction to ARC...")
 
 	// Broadcast the transaction
 	resp, err := client.BroadcastTransaction(rawTx)
@@ -117,12 +117,12 @@ func broadcastTransaction(cfg *config.Config, rawTx string) error {
 		return fmt.Errorf("broadcasting transaction: %w", err)
 	}
 
-	fmt.Printf("✓ Transaction broadcast successful!\n")
-	fmt.Printf("  TxID: %s\n", resp.TxID)
-	fmt.Printf("  Status: %s\n", resp.TxStatus)
-	fmt.Printf("  Description: %s\n", arc.GetStatusDescription(resp.TxStatus))
+	fmt.Fprintf(os.Stdout, "✓ Transaction broadcast successful!\n")
+	fmt.Fprintf(os.Stdout, "  TxID: %s\n", resp.TxID)
+	fmt.Fprintf(os.Stdout, "  Status: %s\n", resp.TxStatus)
+	fmt.Fprintf(os.Stdout, "  Description: %s\n", arc.GetStatusDescription(resp.TxStatus))
 	if resp.ExtraInfo != "" {
-		fmt.Printf("  Info: %s\n", resp.ExtraInfo)
+		fmt.Fprintf(os.Stdout, "  Info: %s\n", resp.ExtraInfo)
 	}
 
 	// Monitor transaction status if requested
@@ -138,9 +138,9 @@ func broadcastTransaction(cfg *config.Config, rawTx string) error {
 // The polling interval is controlled by the --poll-rate flag (default: 5 seconds).
 // Displays timestamped status updates and block information if available.
 func monitorTransaction(client *arc.ARCClient, txid string) {
-	fmt.Printf("\nMonitoring transaction status (polling every %d seconds)...\n", pollRate)
-	fmt.Println("Press Ctrl+C to stop monitoring")
-	fmt.Println()
+	fmt.Fprintf(os.Stdout, "\nMonitoring transaction status (polling every %d seconds)...\n", pollRate)
+	fmt.Fprintln(os.Stdout, "Press Ctrl+C to stop monitoring")
+	fmt.Fprintln(os.Stdout)
 
 	ticker := time.NewTicker(time.Duration(pollRate) * time.Second)
 	defer ticker.Stop()
@@ -154,16 +154,16 @@ func monitorTransaction(client *arc.ARCClient, txid string) {
 		}
 
 		timestamp := time.Now().Format("15:04:05")
-		fmt.Printf("[%s] Status: %s - %s\n", timestamp, status.TxStatus, arc.GetStatusDescription(status.TxStatus))
+		fmt.Fprintf(os.Stdout, "[%s] Status: %s - %s\n", timestamp, status.TxStatus, arc.GetStatusDescription(status.TxStatus))
 
 		if status.BlockHash != "" {
-			fmt.Printf("         Block Hash: %s\n", status.BlockHash)
-			fmt.Printf("         Block Height: %d\n", status.BlockHeight)
+			fmt.Fprintf(os.Stdout, "         Block Hash: %s\n", status.BlockHash)
+			fmt.Fprintf(os.Stdout, "         Block Height: %d\n", status.BlockHeight)
 		}
 
 		// Stop monitoring if transaction reached final state
 		if arc.IsTransactionFinal(status.TxStatus) {
-			fmt.Printf("\n✓ Transaction reached final state: %s\n", status.TxStatus)
+			fmt.Fprintf(os.Stdout, "\n✓ Transaction reached final state: %s\n", status.TxStatus)
 			break
 		}
 
