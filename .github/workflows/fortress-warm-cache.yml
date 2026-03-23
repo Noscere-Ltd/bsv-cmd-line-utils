@@ -4,7 +4,7 @@
 #  Purpose: Warm Go module and Redis caches across multiple Go versions and operating
 #  systems to optimize subsequent workflow performance.
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

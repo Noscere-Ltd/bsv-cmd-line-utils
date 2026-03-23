@@ -4,7 +4,7 @@
 #  Purpose: Run Go benchmarks across multiple Go versions and operating systems,
 #  collecting performance metrics for analysis and comparison.
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

@@ -9,7 +9,7 @@
 #  - Push: When `.github/labels.yml` is modified on the default branch
 #  - Manual: Via workflow_dispatch with optional dry-run mode
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 #  SECURITY MODEL:
 #  - Fork PRs CANNOT trigger this workflow directly (only push events trigger it)

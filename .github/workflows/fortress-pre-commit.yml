@@ -4,7 +4,7 @@
 #  Purpose: Run GoFortress Pre-commit System for code quality enforcement.
 #  This workflow installs and executes the external go-pre-commit tool.
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

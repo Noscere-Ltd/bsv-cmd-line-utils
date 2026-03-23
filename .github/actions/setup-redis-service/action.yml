@@ -19,7 +19,7 @@
 #        redis-host: ${{ inputs.redis-host }}
 #        redis-port: ${{ inputs.redis-port }}
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

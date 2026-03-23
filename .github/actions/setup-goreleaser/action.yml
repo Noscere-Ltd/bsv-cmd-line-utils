@@ -18,7 +18,7 @@
 #        goreleaser-version: ${{ env.MAGE_X_GORELEASER_VERSION }}
 #        runner-os: ${{ runner.os }}
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

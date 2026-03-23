@@ -21,7 +21,7 @@
                 "sections": [
                     "standard",
                     "default",
-                    "prefix(github.com/mrz1836/go-template)"
+                    "prefix(github.com/n0sc/bsv-cmd-line-utils)"
                 ]
             },
             "gofmt": {
@@ -32,7 +32,7 @@
             },
             "goimports": {
                 "local-prefixes": [
-                    "github.com/mrz1836/go-template"
+                    "github.com/n0sc/bsv-cmd-line-utils"
                 ]
             }
         }

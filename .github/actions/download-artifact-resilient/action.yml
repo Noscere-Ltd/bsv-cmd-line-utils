@@ -12,7 +12,7 @@
 #    - Graceful fallback for missing or unavailable artifacts
 #    - Timeout handling for large artifact downloads
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

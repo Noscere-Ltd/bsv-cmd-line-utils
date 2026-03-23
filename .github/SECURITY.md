@@ -1,11 +1,11 @@
 # 🔐 Security Policy
 
-Security is a priority. We maintain a proactive stance to identify and fix vulnerabilities in **go-template**.
+Security is a priority. We maintain a proactive stance to identify and fix vulnerabilities in **bsv-cmd-line-utils**.
 
 <br/>
 
 ## 🛠️ Supported & Maintained Versions
-Any released version of **go-template** that is not marked as deprecated is actively supported and maintained.
+Any released version of **bsv-cmd-line-utils** that is not marked as deprecated is actively supported and maintained.
 
 <br/>
 
@@ -14,7 +14,7 @@ Any released version of **go-template** that is not marked as deprecated is acti
 If you’ve found a security issue, **please don’t open a public issue or PR**.
 
 Instead, send a private email to:
-📧 [go-template@mrz1818.com](mailto:go-template@mrz1818.com)
+📧 [n0sc@bsv-cmd-line-utils.com](mailto:n0sc@bsv-cmd-line-utils.com)
 
 Include the following:
 

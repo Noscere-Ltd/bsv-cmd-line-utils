@@ -7,7 +7,7 @@
 #  This workflow orchestrates sub-workflows that process different aspects of the
 #  completion report to improve maintainability and enable parallel processing.
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

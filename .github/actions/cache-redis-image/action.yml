@@ -20,7 +20,7 @@
 #        runner-os: ${{ runner.os }}
 #        cache-mode: "restore-save"  # restore, save, restore-save
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

@@ -16,7 +16,7 @@
 #    - uses: ./.github/actions/load-env
 #      id: load-env
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

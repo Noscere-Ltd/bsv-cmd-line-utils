@@ -3,46 +3,46 @@
 # The most specific rule that matches takes precedence.
 
 # Default owner for the entire repository
-* @mrz1836
+* @n0sc
 
 # GitHub Actions workflows
-.github/workflows/* @mrz1836
-.github/.env.base @mrz1836
-.github/.env.custom @mrz1836
+.github/workflows/* @n0sc
+.github/.env.base @n0sc
+.github/.env.custom @n0sc
 
 # MAGE-X
-.mage.yaml @mrz1836
+.mage.yaml @n0sc
 
 # Documentation files
-*.md @mrz1836
-CITATION.cff @mrz1836
+*.md @n0sc
+CITATION.cff @n0sc
 
 # Build and makefiles
-Makefile @mrz1836
-.make/*.mk @mrz1836
-*.mk @mrz1836
+Makefile @n0sc
+.make/*.mk @n0sc
+*.mk @n0sc
 
 # Go module dependencies
-go.mod @mrz1836
-go.sum @mrz1836
+go.mod @n0sc
+go.sum @n0sc
 
 # Code Coverage
-codecov.yml @mrz1836
+codecov.yml @n0sc
 
 # Linter configuration
-.golangci.json @mrz1836
-.golangci.yml @mrz1836
+.golangci.json @n0sc
+.golangci.yml @n0sc
 
 # AI Config Files
-.github/AGENTS.md @mrz1836
-.cursorrules @mrz1836
-.github/CLAUDE.md @mrz1836
-sweep.yml @mrz1836
+.github/AGENTS.md @n0sc
+.cursorrules @n0sc
+.github/CLAUDE.md @n0sc
+sweep.yml @n0sc
 
 # Security and configuration files
-.github/SECURITY.md @mrz1836
-.github/.gitleaks.toml @mrz1836
+.github/SECURITY.md @n0sc
+.github/.gitleaks.toml @n0sc
 
 # Repository configuration
-.github/labels.yml @mrz1836
-.github/dependabot.yml @mrz1836
+.github/labels.yml @n0sc
+.github/dependabot.yml @n0sc
