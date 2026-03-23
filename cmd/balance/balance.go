@@ -11,7 +11,7 @@ import (
 	"github.com/mrz1836/go-whatsonchain"
 	"github.com/spf13/cobra"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 const (

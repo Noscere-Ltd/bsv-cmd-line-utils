@@ -323,7 +323,7 @@ func filterAndDeduplicateUTXOs(utxos []*UTXO, addr string) ([]*UTXO, error) {
 }
 
 // selectUTXOs implements a largest-first UTXO selection algorithm.
-func selectUTXOs(utxos []*UTXO, targetAmount uint64, feePerKb uint64) ([]*UTXO, error) {
+func selectUTXOs(utxos []*UTXO, targetAmount, feePerKb uint64) ([]*UTXO, error) {
 	if len(utxos) == 0 {
 		return nil, fmt.Errorf("no UTXOs available")
 	}

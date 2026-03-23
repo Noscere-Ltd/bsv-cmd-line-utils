@@ -30,8 +30,9 @@ import (
 	"strings"
 
 	"github.com/bsv-blockchain/go-sdk/transaction"
-	"github.com/mrz1836/go-template/internal/cli"
 	"github.com/spf13/cobra"
+
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 // Command-line flags

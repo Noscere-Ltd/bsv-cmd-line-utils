@@ -34,7 +34,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/spf13/cobra"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 // Network prefix bytes for WIF encoding
@@ -150,7 +150,7 @@ func getWIF(cmd *cobra.Command, args []string) (string, error) {
 
 // parseWIF decodes and validates a WIF string, returning the private key bytes,
 // network, and compression flag.
-func parseWIF(wifString string) (privKeyBytes []byte, isTestnet bool, isCompressed bool, err error) {
+func parseWIF(wifString string) (privKeyBytes []byte, isTestnet, isCompressed bool, err error) {
 	decoded, err := base58.Decode(wifString)
 	if err != nil {
 		return nil, false, false, fmt.Errorf("invalid base58 encoding: %w", err)
@@ -200,7 +200,7 @@ func parseWIF(wifString string) (privKeyBytes []byte, isTestnet bool, isCompress
 }
 
 // encodeWIF generates a WIF string from a private key with the given network and compression.
-func encodeWIF(privKeyBytes []byte, isTestnet bool, isCompressed bool) string {
+func encodeWIF(privKeyBytes []byte, isTestnet, isCompressed bool) string {
 	prefix := mainnetWIFPrefix
 	if isTestnet {
 		prefix = testnetWIFPrefix

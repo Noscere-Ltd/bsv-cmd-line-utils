@@ -8,7 +8,7 @@ import (
 	bsm "github.com/bsv-blockchain/go-sdk/compat/bsm"
 	"github.com/spf13/cobra"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 var (

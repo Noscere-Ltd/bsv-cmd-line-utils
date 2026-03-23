@@ -16,7 +16,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
 	"github.com/spf13/cobra"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 // Transaction size estimation constants (same as carve)
@@ -279,7 +279,7 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 	return utxos, nil
 }
 
-func selectUTXOs(utxos []*UTXO, targetAmount uint64, feeRate uint64) ([]*UTXO, error) {
+func selectUTXOs(utxos []*UTXO, targetAmount, feeRate uint64) ([]*UTXO, error) {
 	if len(utxos) == 0 {
 		return nil, fmt.Errorf("no UTXOs available")
 	}

@@ -23,10 +23,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/mrz1836/go-template/internal/arc"
-	"github.com/mrz1836/go-template/internal/cli"
-	"github.com/mrz1836/go-template/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/n0sc/bsv-cmd-line-utils/internal/arc"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/config"
 )
 
 // Command-line flags

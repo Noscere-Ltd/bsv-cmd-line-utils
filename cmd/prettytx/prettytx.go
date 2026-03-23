@@ -34,7 +34,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.design/x/clipboard"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 // ANSI color codes for terminal output styling
