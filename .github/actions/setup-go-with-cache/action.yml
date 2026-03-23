@@ -20,7 +20,7 @@
 #        go-primary-version: ${{ inputs.go-primary-version }}
 #        go-secondary-version: ${{ inputs.go-secondary-version }}
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

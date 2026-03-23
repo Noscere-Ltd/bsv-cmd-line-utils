@@ -114,10 +114,7 @@ func generateKeyPair() (KeyPair, error) {
 
 	// Handle uncompressed WIF (remove compression flag byte before checksum)
 	if uncompressed {
-		wif, err = generateUncompressedWIF(privKey.Serialize(), wifPrefix)
-		if err != nil {
-			return KeyPair{}, fmt.Errorf("generating uncompressed WIF: %w", err)
-		}
+		wif = generateUncompressedWIF(privKey.Serialize(), wifPrefix)
 	}
 
 	// Get public key hex (compressed or uncompressed)
@@ -153,45 +150,45 @@ func generateKeyPair() (KeyPair, error) {
 
 // generateUncompressedWIF creates a WIF string for an uncompressed key.
 // Uncompressed WIF does not include the 0x01 compression flag byte.
-func generateUncompressedWIF(privKeyBytes []byte, prefix byte) (string, error) {
+func generateUncompressedWIF(privKeyBytes []byte, prefix byte) string {
 	// WIF format: prefix (1 byte) + private key (32 bytes) + checksum (4 bytes)
-	// Note: No compression flag for uncompressed keys
+	// WIF format for uncompressed keys: no compression flag byte
 	payload := make([]byte, 1+len(privKeyBytes))
 	payload[0] = prefix
 	copy(payload[1:], privKeyBytes)
 
 	// Add checksum
-	return script.Base58EncodeMissingChecksum(payload), nil
+	return script.Base58EncodeMissingChecksum(payload)
 }
 
 // outputJSON prints key pairs in JSON format.
 func outputJSON(keyPairs []KeyPair) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(keyPairs)
+	return encoder.Encode(keyPairs) //nolint:gosec // G117: intentionally marshaling private keys in key generator
 }
 
 // outputText prints key pairs in human-readable format.
 func outputText(keyPairs []KeyPair) error {
-	fmt.Print("\n=== BSV Key Generator ===\n\n")
+	fmt.Fprint(os.Stdout, "\n=== BSV Key Generator ===\n\n")
 
 	for i, kp := range keyPairs {
 		if count > 1 {
-			fmt.Printf("Key #%d:\n", i+1)
+			fmt.Fprintf(os.Stdout, "Key #%d:\n", i+1)
 		}
-		fmt.Printf("Network: %s\n", kp.Network)
-		fmt.Printf("Private Key (hex): %s\n", kp.PrivateKey)
-		fmt.Printf("Public Key (hex): %s\n", kp.PublicKey)
-		fmt.Printf("WIF: %s\n", kp.WIF)
-		fmt.Printf("Address: %s\n", kp.Address)
-		fmt.Printf("Compressed: %t\n", kp.Compressed)
+		fmt.Fprintf(os.Stdout, "Network: %s\n", kp.Network)
+		fmt.Fprintf(os.Stdout, "Private Key (hex): %s\n", kp.PrivateKey)
+		fmt.Fprintf(os.Stdout, "Public Key (hex): %s\n", kp.PublicKey)
+		fmt.Fprintf(os.Stdout, "WIF: %s\n", kp.WIF)
+		fmt.Fprintf(os.Stdout, "Address: %s\n", kp.Address)
+		fmt.Fprintf(os.Stdout, "Compressed: %t\n", kp.Compressed)
 
 		if i < len(keyPairs)-1 {
-			fmt.Println("---")
+			fmt.Fprintln(os.Stdout, "---")
 		}
 	}
 
-	fmt.Println("\nKeep your private keys secure!")
+	fmt.Fprintln(os.Stdout, "\nKeep your private keys secure!")
 	return nil
 }
 

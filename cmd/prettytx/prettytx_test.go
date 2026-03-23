@@ -325,7 +325,8 @@ func TestExtractPublicKeyFromScript(t *testing.T) {
 		t.Parallel()
 
 		// OP_PUSHDATA1, length 33, but only 10 bytes of data
-		scriptBytes := []byte{0x4c, 33}
+		scriptBytes := make([]byte, 0, 12)
+		scriptBytes = append(scriptBytes, 0x4c, 33)
 		scriptBytes = append(scriptBytes, make([]byte, 10)...)
 
 		result := extractPublicKeyFromScript(scriptBytes)
@@ -334,7 +335,7 @@ func TestExtractPublicKeyFromScript(t *testing.T) {
 }
 
 func TestC(t *testing.T) {
-	// Note: This test manipulates the global noColor variable
+	// This test manipulates the global noColor variable
 	// and should not run in parallel with other tests that use it
 
 	t.Run("color enabled", func(t *testing.T) {
@@ -440,14 +441,14 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 
 	t.Run("nil script", func(t *testing.T) {
 		t.Parallel()
-		addr := extractAddressFromUnlockingScript(nil, true)
+		addr := extractAddressFromUnlockingScript(nil)
 		assert.Empty(t, addr)
 	})
 
 	t.Run("empty script", func(t *testing.T) {
 		t.Parallel()
 		s := script.Script([]byte{})
-		addr := extractAddressFromUnlockingScript(&s, true)
+		addr := extractAddressFromUnlockingScript(&s)
 		assert.Empty(t, addr)
 	})
 
@@ -459,7 +460,7 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 		scriptBytes := append([]byte{72}, sig...)
 		s := script.Script(scriptBytes)
 
-		addr := extractAddressFromUnlockingScript(&s, true)
+		addr := extractAddressFromUnlockingScript(&s)
 		assert.Empty(t, addr)
 	})
 
@@ -476,7 +477,7 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 		scriptBytes = append(scriptBytes, invalidPubKey...)
 		s := script.Script(scriptBytes)
 
-		addr := extractAddressFromUnlockingScript(&s, true)
+		addr := extractAddressFromUnlockingScript(&s)
 		// May or may not return empty depending on SDK behavior
 		// The important thing is it doesn't panic
 		_ = addr

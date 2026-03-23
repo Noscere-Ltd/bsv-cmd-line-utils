@@ -8,7 +8,7 @@ import (
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/spf13/cobra"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 var (
@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 
 func run(cmd *cobra.Command) error {
 	if wifFlag == "" {
-		cmd.Help() //nolint:errcheck
+		_ = cmd.Help()
 		return fmt.Errorf("--wif is required")
 	}
 
@@ -37,7 +37,7 @@ func run(cmd *cobra.Command) error {
 	}
 
 	if message == "" {
-		cmd.Help() //nolint:errcheck
+		_ = cmd.Help()
 		return fmt.Errorf("no message provided (use --message or pipe via stdin)")
 	}
 
@@ -51,11 +51,11 @@ func run(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to sign message: %w", err)
 	}
 
-	fmt.Println(sig)
+	fmt.Fprintln(os.Stdout, sig)
 	return nil
 }
 
-func getMessage(cmd *cobra.Command) (string, error) {
+func getMessage(_ *cobra.Command) (string, error) {
 	if messageFlag != "" {
 		return messageFlag, nil
 	}
@@ -71,7 +71,9 @@ func getMessage(cmd *cobra.Command) (string, error) {
 func init() {
 	rootCmd.Flags().StringVarP(&wifFlag, "wif", "w", "", "WIF private key for signing (required)")
 	rootCmd.Flags().StringVarP(&messageFlag, "message", "m", "", "Message to sign")
-	rootCmd.MarkFlagRequired("wif") //nolint:errcheck
+	if err := rootCmd.MarkFlagRequired("wif"); err != nil {
+		panic(err)
+	}
 }
 
 func main() {

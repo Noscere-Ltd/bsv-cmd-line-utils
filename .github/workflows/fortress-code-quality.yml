@@ -4,7 +4,7 @@
 #  Purpose: Run code quality checks including Go vet (static analysis) and
 #  golangci-lint (comprehensive linting).
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

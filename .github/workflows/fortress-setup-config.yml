@@ -5,7 +5,7 @@
 #  test matrices for the main workflow. This workflow handles all the initial
 #  configuration logic.
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 name: GoFortress (Setup Configuration)

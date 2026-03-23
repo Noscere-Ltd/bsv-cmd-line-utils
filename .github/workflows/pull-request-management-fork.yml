@@ -16,7 +16,7 @@
 #  - Cache cleanup on PR close
 #  - Branch deletion after merge
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ════════════════════════════════════════════════════════════════════════════════
 #  🔒 SECURITY MODEL - Two-Workflow Pattern for Safe Fork PR Handling

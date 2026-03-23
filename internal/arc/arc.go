@@ -10,6 +10,7 @@
 package arc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -90,7 +91,7 @@ func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, er
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, strings.NewReader(string(jsonData)))
+	req, err := http.NewRequestWithContext(context.Background(), "POST", url, strings.NewReader(string(jsonData)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -104,7 +105,7 @@ func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		var errorResp ErrorResponse
@@ -129,7 +130,7 @@ func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, er
 func (c *ARCClient) GetTransactionStatus(txid string) (*TransactionStatus, error) {
 	url := c.baseURL + "/v1/tx/" + txid
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -142,7 +143,7 @@ func (c *ARCClient) GetTransactionStatus(txid string) (*TransactionStatus, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var errorResp ErrorResponse

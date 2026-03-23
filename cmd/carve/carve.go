@@ -75,17 +75,17 @@ var rootCmd = &cobra.Command{
 // validateFlags checks that required flags are present and have valid values.
 func validateFlags(cmd *cobra.Command) error {
 	if wif == "" || address == "" {
-		cmd.Help()
+		_ = cmd.Help()
 		return fmt.Errorf("--wif and --address are required")
 	}
 
 	if split < 1 {
-		cmd.Help()
+		_ = cmd.Help()
 		return fmt.Errorf("--split must be at least 1")
 	}
 
 	if split > 1 && sats == 0 {
-		cmd.Help()
+		_ = cmd.Help()
 		return fmt.Errorf("--split requires a specific amount (--sats), cannot be used with send-all mode")
 	}
 
@@ -128,7 +128,7 @@ func carveTransaction() error {
 	}
 
 	// 5. Output the raw transaction hex to stdout
-	fmt.Println(tx.String())
+	fmt.Fprintln(os.Stdout, tx.String())
 
 	return nil
 }
@@ -145,7 +145,7 @@ func deriveKeyAndAddress() (*ec.PrivateKey, *script.Address, error) {
 	}
 
 	// Derive the source address from the private key
-	// Note: NewAddressFromPublicKey takes mainnet bool, not testnet bool
+	// NewAddressFromPublicKey takes mainnet bool, not testnet bool
 	sourceAddress, err := script.NewAddressFromPublicKey(privKey.PubKey(), !testnet)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to derive source address: %w", err)
@@ -209,7 +209,7 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 	}
 
 	// Fetch from API
-	utxos, err := fetchUTXOsFromAPI(url)
+	utxos, err := fetchUTXOsFromAPI(ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -219,12 +219,16 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 }
 
 // fetchUTXOsFromAPI makes the HTTP request to WhatsOnChain.
-func fetchUTXOsFromAPI(url string) ([]*UTXO, error) {
-	resp, err := http.Get(url)
+func fetchUTXOsFromAPI(ctx context.Context, url string) ([]*UTXO, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
@@ -283,7 +287,7 @@ func parseUTXOResponse(body []byte) ([]*UTXO, error) {
 		}
 		utxos = append(utxos, &UTXO{
 			TxHash: u.TxHash,
-			TxPos:  uint32(u.TxPos),
+			TxPos:  uint32(u.TxPos), //nolint:gosec // G115: TxPos is a transaction output index, safe to convert
 			Value:  u.Value,
 		})
 	}
@@ -323,7 +327,7 @@ func filterAndDeduplicateUTXOs(utxos []*UTXO, addr string) ([]*UTXO, error) {
 }
 
 // selectUTXOs implements a largest-first UTXO selection algorithm.
-func selectUTXOs(utxos []*UTXO, targetAmount uint64, feePerKb uint64) ([]*UTXO, error) {
+func selectUTXOs(utxos []*UTXO, targetAmount, feePerKb uint64) ([]*UTXO, error) {
 	if len(utxos) == 0 {
 		return nil, fmt.Errorf("no UTXOs available")
 	}
@@ -363,7 +367,7 @@ func selectUTXOs(utxos []*UTXO, targetAmount uint64, feePerKb uint64) ([]*UTXO, 
 
 // calculateFee estimates the transaction fee based on size.
 func calculateFee(numInputs, numOutputs int, feePerKb uint64) uint64 {
-	estimatedSize := uint64(numInputs*inputSize + numOutputs*outputSize + baseTxSize)
+	estimatedSize := uint64(numInputs*inputSize + numOutputs*outputSize + baseTxSize) //nolint:gosec // G115: size is always non-negative
 	fee := (estimatedSize * feePerKb) / 1000
 
 	// Enforce minimum fee
@@ -551,8 +555,12 @@ func init() {
 	rootCmd.Flags().Uint64VarP(&feePerKb, "fee-per-kb", "f", 100, "Fee per kilobyte in satoshis")
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Enable debug logging")
 
-	rootCmd.MarkFlagRequired("wif")
-	rootCmd.MarkFlagRequired("address")
+	if err := rootCmd.MarkFlagRequired("wif"); err != nil {
+		panic(err)
+	}
+	if err := rootCmd.MarkFlagRequired("address"); err != nil {
+		panic(err)
+	}
 }
 
 // main is the entry point for the carve command.

@@ -16,7 +16,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
 	"github.com/spf13/cobra"
 
-	"github.com/mrz1836/go-template/internal/cli"
+	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
 )
 
 // Transaction size estimation constants (same as carve)
@@ -41,7 +41,7 @@ var rootCmd = &cobra.Command{
 	Long:  "A command line tool that creates a signed BSV transaction with an OP_RETURN data output. Multiple arguments become multiple pushdata parts. Outputs raw tx hex to stdout",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if wifFlag == "" {
-			cmd.Help() //nolint:errcheck
+			_ = cmd.Help()
 			return fmt.Errorf("--wif is required")
 		}
 		return buildOpReturn(args)
@@ -167,7 +167,7 @@ func buildOpReturn(args []string) error {
 		log.Printf("Transaction ID: %s", tx.TxID().String())
 	}
 
-	fmt.Println(tx.String())
+	fmt.Fprintln(os.Stdout, tx.String())
 	return nil
 }
 
@@ -232,11 +232,15 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 		log.Printf("Fetching UTXOs from WhatsOnChain (%s)...", network)
 	}
 
-	resp, err := http.Get(url) //nolint:gosec
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
@@ -271,7 +275,7 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 		seen[key] = true
 		utxos = append(utxos, &UTXO{
 			TxHash: u.TxHash,
-			TxPos:  uint32(u.TxPos),
+			TxPos:  uint32(u.TxPos), //nolint:gosec // G115: TxPos is a transaction output index, safe to convert
 			Value:  u.Value,
 		})
 	}
@@ -279,7 +283,7 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 	return utxos, nil
 }
 
-func selectUTXOs(utxos []*UTXO, targetAmount uint64, feeRate uint64) ([]*UTXO, error) {
+func selectUTXOs(utxos []*UTXO, targetAmount, feeRate uint64) ([]*UTXO, error) {
 	if len(utxos) == 0 {
 		return nil, fmt.Errorf("no UTXOs available")
 	}
@@ -312,7 +316,7 @@ func selectUTXOs(utxos []*UTXO, targetAmount uint64, feeRate uint64) ([]*UTXO, e
 }
 
 func calculateFee(numInputs, numOutputs int, feeRate uint64) uint64 {
-	size := uint64(numInputs*inputSize + numOutputs*outputSize + baseTxSize)
+	size := uint64(numInputs*inputSize + numOutputs*outputSize + baseTxSize) //nolint:gosec // G115: size is always non-negative
 	fee := (size * feeRate) / 1000
 	if fee < minFee {
 		fee = minFee
@@ -326,7 +330,9 @@ func init() {
 	rootCmd.Flags().Uint64VarP(&feePerKb, "fee-per-kb", "f", 100, "Fee per kilobyte in satoshis")
 	rootCmd.Flags().Uint64VarP(&dustLimit, "dust", "d", 1, "Dust limit in satoshis")
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Enable debug logging")
-	rootCmd.MarkFlagRequired("wif") //nolint:errcheck
+	if err := rootCmd.MarkFlagRequired("wif"); err != nil {
+		panic(err)
+	}
 }
 
 func main() {

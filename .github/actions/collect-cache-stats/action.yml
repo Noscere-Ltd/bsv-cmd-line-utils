@@ -22,7 +22,7 @@
 #        gomod-cache-hit: ${{ steps.setup-go.outputs.module-cache-hit }}
 #        gobuild-cache-hit: ${{ steps.setup-go.outputs.build-cache-hit }}
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

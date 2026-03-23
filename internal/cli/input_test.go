@@ -39,7 +39,7 @@ func TestIsValidHex(t *testing.T) {
 		{name: "leading space", input: " abcdef", expected: false},
 		{name: "trailing space", input: "abcdef ", expected: false},
 		{name: "special characters", input: "abc!@#", expected: false},
-		{name: "unicode characters", input: "abc世界", expected: false},
+		{name: "unicode characters", input: "abc\u4e16\u754c", expected: false},
 		{name: "only spaces", input: "   ", expected: false},
 		{name: "mixed valid invalid", input: "abc123xyz", expected: false},
 		{name: "hyphen", input: "abc-def", expected: false},
@@ -166,7 +166,7 @@ func TestCleanString(t *testing.T) {
 		{name: "keep mixed", input: "abc123!@#", expected: "abc123!@#"},
 
 		// Unicode (should be removed as > 127)
-		{name: "remove unicode", input: "abc世界def", expected: "abcdef"},
+		{name: "remove unicode", input: "abc\u4e16\u754cdef", expected: "abcdef"},
 		{name: "remove emoji", input: "abc😀def", expected: "abcdef"},
 
 		// Only non-printable
@@ -315,7 +315,7 @@ func TestReadHexFromReaderEOF(t *testing.T) {
 	reader := strings.NewReader("")
 	result, err := ReadHexFromReader(reader)
 	require.NoError(t, err)
-	assert.Equal(t, "", result)
+	assert.Empty(t, result)
 }
 
 // Test that reader is fully consumed

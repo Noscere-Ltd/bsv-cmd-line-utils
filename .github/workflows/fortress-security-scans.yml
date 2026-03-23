@@ -4,7 +4,7 @@
 #  Purpose: Run all security scanning tools including Nancy (dependency checks),
 #  Govulncheck (Go vulnerability scanning), and Gitleaks (secret scanning).
 #
-#  Maintainer: @mrz1836
+#  Maintainer: @n0sc
 #
 # ------------------------------------------------------------------------------------
 

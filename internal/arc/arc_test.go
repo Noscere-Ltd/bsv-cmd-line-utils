@@ -31,7 +31,7 @@ func TestNewARCClient(t *testing.T) {
 	t.Run("handles empty API key", func(t *testing.T) {
 		t.Parallel()
 		client := NewARCClient("https://api.taal.com/arc", "")
-		assert.Equal(t, "", client.apiKey)
+		assert.Empty(t, client.apiKey)
 	})
 
 	t.Run("handles multiple trailing slashes", func(t *testing.T) {
@@ -63,12 +63,14 @@ func TestBroadcastTransaction(t *testing.T) {
 
 			// Verify request body
 			var req TransactionRequest
-			err := json.NewDecoder(r.Body).Decode(&req)
-			require.NoError(t, err)
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("failed to decode request: %v", err)
+				return
+			}
 			assert.Equal(t, "0100000001...", req.RawTx)
 
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		}))
 		defer server.Close()
 
@@ -92,7 +94,7 @@ func TestBroadcastTransaction(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		}))
 		defer server.Close()
 
@@ -108,10 +110,10 @@ func TestBroadcastTransaction(t *testing.T) {
 		t.Parallel()
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, "", r.Header.Get("Authorization"))
+			assert.Empty(t, r.Header.Get("Authorization"))
 
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(TransactionResponse{TxID: "abc"})
+			_ = json.NewEncoder(w).Encode(TransactionResponse{TxID: "abc"})
 		}))
 		defer server.Close()
 
@@ -131,7 +133,7 @@ func TestBroadcastTransaction(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(errorResp)
+			_ = json.NewEncoder(w).Encode(errorResp)
 		}))
 		defer server.Close()
 
@@ -150,7 +152,7 @@ func TestBroadcastTransaction(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("{}"))
+			_, _ = w.Write([]byte("{}"))
 		}))
 		defer server.Close()
 
@@ -178,7 +180,7 @@ func TestBroadcastTransaction(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("not json"))
+			_, _ = w.Write([]byte("not json"))
 		}))
 		defer server.Close()
 
@@ -212,7 +214,7 @@ func TestGetTransactionStatus(t *testing.T) {
 			assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
 
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(status)
+			_ = json.NewEncoder(w).Encode(status)
 		}))
 		defer server.Close()
 
@@ -238,7 +240,7 @@ func TestGetTransactionStatus(t *testing.T) {
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(errorResp)
+			_ = json.NewEncoder(w).Encode(errorResp)
 		}))
 		defer server.Close()
 
@@ -254,10 +256,10 @@ func TestGetTransactionStatus(t *testing.T) {
 		t.Parallel()
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, "", r.Header.Get("Authorization"))
+			assert.Empty(t, r.Header.Get("Authorization"))
 
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(TransactionStatus{TxID: "abc"})
+			_ = json.NewEncoder(w).Encode(TransactionStatus{TxID: "abc"})
 		}))
 		defer server.Close()
 
