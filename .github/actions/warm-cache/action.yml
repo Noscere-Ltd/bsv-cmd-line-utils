@@ -70,7 +70,7 @@ runs:
     # Checkout code to access local actions (setup-go-with-cache, setup-magex)
     # --------------------------------------------------------------------
     - name: 📥 Checkout code
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     # --------------------------------------------------------------------
     # Set environment variables
@@ -243,7 +243,7 @@ runs:
     # ────────────────────────────────────────────────────────────────────────────
     - name: 💾 Save Go build cache
       if: steps.setup-go.outputs.build-cache-hit != 'true'
-      uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.0.2
+      uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v4.0.2
       with:
         path: |
           ~/.cache/go-build
@@ -255,7 +255,7 @@ runs:
     # ────────────────────────────────────────────────────────────────────────────
     - name: 💾 Save Go module cache
       if: steps.setup-go.outputs.module-cache-hit != 'true'
-      uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.0.2
+      uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v4.0.2
       with:
         path: ~/go/pkg/mod
         key: ${{ inputs.matrix-os }}-gomod-${{ hashFiles(inputs.go-sum-file) }}
@@ -320,7 +320,7 @@ runs:
     # --------------------------------------------------------------------
     - name: 📤 Upload cache statistics
       if: always()
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: cache-stats-${{ inputs.matrix-os }}-${{ inputs.go-version }}
         path: cache-stats-*.json
