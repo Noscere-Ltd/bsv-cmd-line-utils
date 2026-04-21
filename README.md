@@ -1,3 +1,4 @@
+<!-- docs-sync: up to date as of commit 5b54b765bb1a1ac91648653e341df7896ba142a1 -->
 # BSV Command Line Tools
 
 A suite of command-line utilities for the full Bitcoin SV transaction lifecycle: key generation, transaction building, broadcasting, inspection, field extraction, and status tracking.
@@ -25,8 +26,10 @@ All tools are single Go binaries with no runtime dependencies. Designed for Unix
 
 ## Installation
 
+Requires Go 1.25 or later.
+
 ```bash
-git clone https://github.com/noscere-labs/bsv-cmd-line-utils.git
+git clone https://github.com/Noscere-Ltd/bsv-cmd-line-utils.git
 cd bsv-cmd-line-utils
 
 # Install all tools
@@ -157,6 +160,9 @@ bsv-cmd-line-utils/
 - [go-sdk](https://github.com/bsv-blockchain/go-sdk) — BSV SDK for Go
 - [go-whatsonchain](https://github.com/mrz1836/go-whatsonchain) — WhatsOnChain API client
 - [cobra](https://github.com/spf13/cobra) — CLI framework
+- [clipboard](https://golang.design/x/clipboard) — Cross-platform clipboard access
+- [yaml.v3](https://gopkg.in/yaml.v3) — YAML parser for configuration
+- [testify](https://github.com/stretchr/testify) — Testing toolkit (tests only)
 
 ## Security
 
