@@ -165,7 +165,7 @@ runs:
     # --------------------------------------------------------------------
     - name: 💾 Restore Go module cache
       id: restore-gomod
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ~/go/pkg/mod
         key: ${{ inputs.matrix-os }}-gomod-${{ hashFiles(inputs.go-sum-file) }}
@@ -222,7 +222,7 @@ runs:
     # --------------------------------------------------------------------
     - name: 💾 Restore Go build cache
       id: restore-gobuild
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: |
           ~/.cache/go-build
