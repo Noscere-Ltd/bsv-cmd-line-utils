@@ -11,7 +11,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/spf13/cobra"
 
-	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
 )
 
 const (
@@ -58,7 +58,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if input == "" {
-		_ = cmd.Help()
+		cmd.Help() //nolint:errcheck
 		return fmt.Errorf("no address or public key provided")
 	}
 
@@ -69,7 +69,7 @@ func run(cmd *cobra.Command, args []string) error {
 	return validateModeRun(input)
 }
 
-func getInput(_ *cobra.Command, args []string) (string, error) {
+func getInput(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -175,22 +175,22 @@ func c(color, text string) string {
 }
 
 func printValidateHuman(result *validateResult) {
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
+	fmt.Printf("%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
 	validStr := "yes"
 	if !result.Valid {
 		validStr = "no"
 	}
-	fmt.Fprintf(os.Stdout, "%s   %s\n", c(colorDim, "Valid:"), c(colorGreen, validStr))
+	fmt.Printf("%s   %s\n", c(colorDim, "Valid:"), c(colorGreen, validStr))
 	if result.Valid {
-		fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Network:"), c(colorGreen, result.Network))
-		fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Hash160:"), c(colorGreen, result.Hash160))
+		fmt.Printf("%s %s\n", c(colorDim, "Network:"), c(colorGreen, result.Network))
+		fmt.Printf("%s %s\n", c(colorDim, "Hash160:"), c(colorGreen, result.Hash160))
 	}
 }
 
 func printDeriveHuman(result *deriveResult) {
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Public Key:"), c(colorGreen, result.PublicKey))
-	fmt.Fprintf(os.Stdout, "%s  %s\n", c(colorDim, "Mainnet:"), c(colorGreen, result.Mainnet))
-	fmt.Fprintf(os.Stdout, "%s  %s\n", c(colorDim, "Testnet:"), c(colorGreen, result.Testnet))
+	fmt.Printf("%s %s\n", c(colorDim, "Public Key:"), c(colorGreen, result.PublicKey))
+	fmt.Printf("%s  %s\n", c(colorDim, "Mainnet:"), c(colorGreen, result.Mainnet))
+	fmt.Printf("%s  %s\n", c(colorDim, "Testnet:"), c(colorGreen, result.Testnet))
 }
 
 func init() {

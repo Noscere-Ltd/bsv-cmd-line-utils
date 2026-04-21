@@ -8,7 +8,7 @@ import (
 	bsm "github.com/bsv-blockchain/go-sdk/compat/bsm"
 	"github.com/spf13/cobra"
 
-	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
 )
 
 var (
@@ -28,7 +28,7 @@ var rootCmd = &cobra.Command{
 
 func run(cmd *cobra.Command) error {
 	if addressFlag == "" || signatureFlag == "" {
-		_ = cmd.Help()
+		cmd.Help() //nolint:errcheck
 		return fmt.Errorf("--address and --signature are required")
 	}
 
@@ -38,7 +38,7 @@ func run(cmd *cobra.Command) error {
 	}
 
 	if message == "" {
-		_ = cmd.Help()
+		cmd.Help() //nolint:errcheck
 		return fmt.Errorf("no message provided (use --message or pipe via stdin)")
 	}
 
@@ -53,11 +53,11 @@ func run(cmd *cobra.Command) error {
 		os.Exit(1)
 	}
 
-	fmt.Fprintln(os.Stdout, "Valid")
+	fmt.Println("Valid")
 	return nil
 }
 
-func getMessage(_ *cobra.Command) (string, error) {
+func getMessage(cmd *cobra.Command) (string, error) {
 	if messageFlag != "" {
 		return messageFlag, nil
 	}
@@ -74,12 +74,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&addressFlag, "address", "a", "", "BSV address to verify against (required)")
 	rootCmd.Flags().StringVarP(&signatureFlag, "signature", "s", "", "Base64-encoded signature (required)")
 	rootCmd.Flags().StringVarP(&messageFlag, "message", "m", "", "Message to verify")
-	if err := rootCmd.MarkFlagRequired("address"); err != nil {
-		panic(err)
-	}
-	if err := rootCmd.MarkFlagRequired("signature"); err != nil {
-		panic(err)
-	}
+	rootCmd.MarkFlagRequired("address")   //nolint:errcheck
+	rootCmd.MarkFlagRequired("signature") //nolint:errcheck
 }
 
 func main() {

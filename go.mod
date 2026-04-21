@@ -1,10 +1,10 @@
-module github.com/n0sc/bsv-cmd-line-utils
+module github.com/Noscere-Ltd/bsv-cmd-line-utils
 
-go 1.25.0
+go 1.24.3
 
 require (
-	github.com/bsv-blockchain/go-sdk v1.2.20
-	github.com/mrz1836/go-whatsonchain v1.0.6
+	github.com/bsv-blockchain/go-sdk v1.2.14
+	github.com/mrz1836/go-whatsonchain v1.0.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.design/x/clipboard v0.7.1
@@ -16,10 +16,10 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20260312153236-7ab1446f8b90 // indirect
-	golang.org/x/image v0.37.0 // indirect
-	golang.org/x/mobile v0.0.0-20260312152759-81488f6aeb60 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/exp/shiny v0.0.0-20250606033433-dcc06ee1d476 // indirect
+	golang.org/x/image v0.28.0 // indirect
+	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
+	golang.org/x/sys v0.39.0 // indirect
 )

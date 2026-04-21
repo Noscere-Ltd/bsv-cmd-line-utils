@@ -21,7 +21,7 @@
                 "sections": [
                     "standard",
                     "default",
-                    "prefix(github.com/n0sc/bsv-cmd-line-utils)"
+                    "prefix(github.com/Noscere-Ltd/bsv-cmd-line-utils)"
                 ]
             },
             "gofmt": {
@@ -32,7 +32,7 @@
             },
             "goimports": {
                 "local-prefixes": [
-                    "github.com/n0sc/bsv-cmd-line-utils"
+                    "github.com/Noscere-Ltd/bsv-cmd-line-utils"
                 ]
             }
         }
@@ -43,13 +43,6 @@
     "linters": {
         "disable": [
             "gocritic",
-            "wsl_v5",
-            "revive",
-            "gocyclo",
-            "err113",
-            "gochecknoglobals",
-            "gochecknoinits",
-            "gocognit",
             "godot"
         ],
         "enable": [
@@ -64,6 +57,7 @@
             "dogsled",
             "durationcheck",
             "embeddedstructfieldcheck",
+            "err113",
             "errcheck",
             "errchkjson",
             "errname",
@@ -72,8 +66,12 @@
             "forbidigo",
             "funcorder",
             "gocheckcompilerdirectives",
+            "gochecknoglobals",
+            "gochecknoinits",
             "gochecksumtype",
+            "gocognit",
             "goconst",
+            "gocyclo",
             "godox",
             "goheader",
             "gomoddirectives",
@@ -100,6 +98,7 @@
             "protogetter",
             "reassign",
             "recvcheck",
+            "revive",
             "rowserrcheck",
             "spancheck",
             "sqlclosecheck",
@@ -109,6 +108,7 @@
             "unparam",
             "unused",
             "wastedassign",
+            "wsl_v5",
             "zerologlint"
         ],
         "settings": {
@@ -117,13 +117,6 @@
             },
             "dupl": {
                 "threshold": 100
-            },
-            "errcheck": {
-                "exclude-functions": [
-                    "fmt.Fprintf",
-                    "fmt.Fprintln",
-                    "fmt.Fprint"
-                ]
             },
             "exhaustive": {
                 "default-signifies-exhaustive": false

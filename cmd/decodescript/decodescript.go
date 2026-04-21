@@ -9,7 +9,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/spf13/cobra"
 
-	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
 )
 
 const (
@@ -48,7 +48,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if input == "" {
-		_ = cmd.Help()
+		cmd.Help() //nolint:errcheck
 		return fmt.Errorf("no script hex provided")
 	}
 
@@ -88,7 +88,7 @@ func run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getInput(_ *cobra.Command, args []string) (string, error) {
+func getInput(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -126,11 +126,11 @@ func c(color, text string) string {
 }
 
 func printHuman(result *decodeResult) {
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "ASM:"), c(colorGreen, result.ASM))
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Type:"), c(colorGreen, result.Type))
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Size:"), c(colorGreen, fmt.Sprintf("%d bytes", result.Size)))
+	fmt.Printf("%s %s\n", c(colorDim, "ASM:"), c(colorGreen, result.ASM))
+	fmt.Printf("%s %s\n", c(colorDim, "Type:"), c(colorGreen, result.Type))
+	fmt.Printf("%s %s\n", c(colorDim, "Size:"), c(colorGreen, fmt.Sprintf("%d bytes", result.Size)))
 	if result.Address != "" {
-		fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
+		fmt.Printf("%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
 	}
 }
 

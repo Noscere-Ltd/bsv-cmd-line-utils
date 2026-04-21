@@ -11,7 +11,7 @@ import (
 	"github.com/mrz1836/go-whatsonchain"
 	"github.com/spf13/cobra"
 
-	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
 )
 
 const (
@@ -60,7 +60,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if input == "" {
-		_ = cmd.Help()
+		cmd.Help() //nolint:errcheck
 		return fmt.Errorf("no address or WIF provided")
 	}
 
@@ -82,21 +82,16 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating WhatsOnChain client: %w", err)
 	}
 
-	confirmed, err := client.AddressConfirmedBalance(ctx, addr)
+	bal, err := client.AddressBalance(ctx, addr)
 	if err != nil {
-		return fmt.Errorf("fetching confirmed balance: %w", err)
+		return fmt.Errorf("fetching balance: %w", err)
 	}
 
-	unconfirmed, err := client.AddressUnconfirmedBalance(ctx, addr)
-	if err != nil {
-		return fmt.Errorf("fetching unconfirmed balance: %w", err)
-	}
-
-	total := confirmed.Balance + unconfirmed.Balance
+	total := bal.Confirmed + bal.Unconfirmed
 	result := balanceResult{
 		Address:     addr,
-		Confirmed:   confirmed.Balance,
-		Unconfirmed: unconfirmed.Balance,
+		Confirmed:   bal.Confirmed,
+		Unconfirmed: bal.Unconfirmed,
 		Total:       total,
 		BSV:         float64(total) / 1e8,
 	}
@@ -126,7 +121,7 @@ func run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getInput(_ *cobra.Command, args []string) (string, error) {
+func getInput(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -162,15 +157,15 @@ func c(color, text string) string {
 }
 
 func printHuman(result *balanceResult) {
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Confirmed:"), c(colorGreen, fmt.Sprintf("%d sats", result.Confirmed)))
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Unconfirmed:"), c(colorGreen, fmt.Sprintf("%d sats", result.Unconfirmed)))
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Total:"), c(colorGreen, fmt.Sprintf("%d sats (%.8f BSV)", result.Total, result.BSV)))
+	fmt.Printf("%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
+	fmt.Printf("%s %s\n", c(colorDim, "Confirmed:"), c(colorGreen, fmt.Sprintf("%d sats", result.Confirmed)))
+	fmt.Printf("%s %s\n", c(colorDim, "Unconfirmed:"), c(colorGreen, fmt.Sprintf("%d sats", result.Unconfirmed)))
+	fmt.Printf("%s %s\n", c(colorDim, "Total:"), c(colorGreen, fmt.Sprintf("%d sats (%.8f BSV)", result.Total, result.BSV)))
 
 	if len(result.UTXOs) > 0 {
-		fmt.Fprintf(os.Stdout, "\n%s\n", c(colorDim, "UTXOs:"))
+		fmt.Printf("\n%s\n", c(colorDim, "UTXOs:"))
 		for _, u := range result.UTXOs {
-			fmt.Fprintf(os.Stdout, "  %s:%d  %s sats  (height: %d)\n",
+			fmt.Printf("  %s:%d  %s sats  (height: %d)\n",
 				c(colorGreen, u.TxHash), u.TxPos,
 				c(colorGreen, fmt.Sprintf("%d", u.Value)), u.Height)
 		}

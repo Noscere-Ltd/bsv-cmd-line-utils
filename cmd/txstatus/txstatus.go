@@ -23,11 +23,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/arc"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/config"
 	"github.com/spf13/cobra"
-
-	"github.com/n0sc/bsv-cmd-line-utils/internal/arc"
-	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
-	"github.com/n0sc/bsv-cmd-line-utils/internal/config"
 )
 
 // Command-line flags
@@ -51,7 +50,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if transactionID == "" {
-			_ = cmd.Help()
+			cmd.Help()
 			return fmt.Errorf("no txid provided")
 		}
 
@@ -65,7 +64,7 @@ var rootCmd = &cobra.Command{
 }
 
 // getTransactionID retrieves the transaction ID from argument, flag, or stdin.
-func getTransactionID(_ *cobra.Command, args []string) (string, error) {
+func getTransactionID(cmd *cobra.Command, args []string) (string, error) {
 	// Get txid from command line argument if provided
 	if len(args) > 0 {
 		return args[0], nil
@@ -102,9 +101,9 @@ func checkTransactionStatus(txid string) error {
 	arcConfig := cfg.GetARCConfig(testnet)
 
 	if testnet {
-		fmt.Fprintln(os.Stdout, "Using testnet configuration")
+		fmt.Println("Using testnet configuration")
 	} else {
-		fmt.Fprintln(os.Stdout, "Using mainnet configuration")
+		fmt.Println("Using mainnet configuration")
 	}
 
 	// Create ARC client
@@ -121,33 +120,33 @@ func checkTransactionStatus(txid string) error {
 
 // getStatus performs a single transaction status check.
 func getStatus(client *arc.ARCClient, txid string) error {
-	fmt.Fprintf(os.Stdout, "Checking status for transaction: %s\n\n", txid)
+	fmt.Printf("Checking status for transaction: %s\n\n", txid)
 
 	status, err := client.GetTransactionStatus(txid)
 	if err != nil {
 		return fmt.Errorf("getting transaction status: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "Status: %s\n", status.TxStatus)
-	fmt.Fprintf(os.Stdout, "Description: %s\n", arc.GetStatusDescription(status.TxStatus))
+	fmt.Printf("Status: %s\n", status.TxStatus)
+	fmt.Printf("Description: %s\n", arc.GetStatusDescription(status.TxStatus))
 
 	if status.ExtraInfo != "" {
-		fmt.Fprintf(os.Stdout, "Info: %s\n", status.ExtraInfo)
+		fmt.Printf("Info: %s\n", status.ExtraInfo)
 	}
 
 	if status.Timestamp != "" {
-		fmt.Fprintf(os.Stdout, "Timestamp: %s\n", status.Timestamp)
+		fmt.Printf("Timestamp: %s\n", status.Timestamp)
 	}
 
 	if status.BlockHash != "" {
-		fmt.Fprintf(os.Stdout, "Block Hash: %s\n", status.BlockHash)
-		fmt.Fprintf(os.Stdout, "Block Height: %d\n", status.BlockHeight)
+		fmt.Printf("Block Hash: %s\n", status.BlockHash)
+		fmt.Printf("Block Height: %d\n", status.BlockHeight)
 	}
 
 	if arc.IsTransactionFinal(status.TxStatus) {
-		fmt.Fprintln(os.Stdout, "\n✓ Transaction is in final state")
+		fmt.Printf("\n✓ Transaction is in final state\n")
 	} else {
-		fmt.Fprintln(os.Stdout, "\n⏳ Transaction is still pending (use --monitor to watch for changes)")
+		fmt.Printf("\n⏳ Transaction is still pending (use --monitor to watch for changes)\n")
 	}
 
 	return nil
@@ -155,10 +154,10 @@ func getStatus(client *arc.ARCClient, txid string) error {
 
 // monitorTransaction continuously polls the transaction status until it reaches a final state.
 func monitorTransaction(client *arc.ARCClient, txid string) error {
-	fmt.Fprintf(os.Stdout, "Monitoring transaction: %s\n", txid)
-	fmt.Fprintf(os.Stdout, "Polling every %d seconds...\n", pollRate)
-	fmt.Fprintln(os.Stdout, "Press Ctrl+C to stop monitoring")
-	fmt.Fprintln(os.Stdout)
+	fmt.Printf("Monitoring transaction: %s\n", txid)
+	fmt.Printf("Polling every %d seconds...\n", pollRate)
+	fmt.Println("Press Ctrl+C to stop monitoring")
+	fmt.Println()
 
 	// Do initial check immediately
 	status, err := client.GetTransactionStatus(txid)
@@ -167,16 +166,16 @@ func monitorTransaction(client *arc.ARCClient, txid string) error {
 	}
 
 	timestamp := time.Now().Format("15:04:05")
-	fmt.Fprintf(os.Stdout, "[%s] Status: %s - %s\n", timestamp, status.TxStatus, arc.GetStatusDescription(status.TxStatus))
+	fmt.Printf("[%s] Status: %s - %s\n", timestamp, status.TxStatus, arc.GetStatusDescription(status.TxStatus))
 
 	if status.BlockHash != "" {
-		fmt.Fprintf(os.Stdout, "         Block Hash: %s\n", status.BlockHash)
-		fmt.Fprintf(os.Stdout, "         Block Height: %d\n", status.BlockHeight)
+		fmt.Printf("         Block Hash: %s\n", status.BlockHash)
+		fmt.Printf("         Block Height: %d\n", status.BlockHeight)
 	}
 
 	// If already final, exit
 	if arc.IsTransactionFinal(status.TxStatus) {
-		fmt.Fprintf(os.Stdout, "\n✓ Transaction is already in final state: %s\n", status.TxStatus)
+		fmt.Printf("\n✓ Transaction is already in final state: %s\n", status.TxStatus)
 		return nil
 	}
 
@@ -194,16 +193,16 @@ func monitorTransaction(client *arc.ARCClient, txid string) error {
 		}
 
 		timestamp := time.Now().Format("15:04:05")
-		fmt.Fprintf(os.Stdout, "[%s] Status: %s - %s\n", timestamp, status.TxStatus, arc.GetStatusDescription(status.TxStatus))
+		fmt.Printf("[%s] Status: %s - %s\n", timestamp, status.TxStatus, arc.GetStatusDescription(status.TxStatus))
 
 		if status.BlockHash != "" {
-			fmt.Fprintf(os.Stdout, "         Block Hash: %s\n", status.BlockHash)
-			fmt.Fprintf(os.Stdout, "         Block Height: %d\n", status.BlockHeight)
+			fmt.Printf("         Block Hash: %s\n", status.BlockHash)
+			fmt.Printf("         Block Height: %d\n", status.BlockHeight)
 		}
 
 		// Stop monitoring if transaction reached final state
 		if arc.IsTransactionFinal(status.TxStatus) {
-			fmt.Fprintf(os.Stdout, "\n✓ Transaction reached final state: %s\n", status.TxStatus)
+			fmt.Printf("\n✓ Transaction reached final state: %s\n", status.TxStatus)
 			break
 		}
 	}

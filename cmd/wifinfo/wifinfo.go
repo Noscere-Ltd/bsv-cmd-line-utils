@@ -34,7 +34,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/spf13/cobra"
 
-	"github.com/n0sc/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
 )
 
 // Network prefix bytes for WIF encoding
@@ -113,7 +113,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if wifString == "" {
-		_ = cmd.Help()
+		cmd.Help() //nolint:errcheck
 		return fmt.Errorf("no WIF provided")
 	}
 
@@ -131,7 +131,7 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 // getWIF retrieves the WIF string from argument, flag, or stdin.
-func getWIF(_ *cobra.Command, args []string) (string, error) {
+func getWIF(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -150,7 +150,7 @@ func getWIF(_ *cobra.Command, args []string) (string, error) {
 
 // parseWIF decodes and validates a WIF string, returning the private key bytes,
 // network, and compression flag.
-func parseWIF(wifString string) (privKeyBytes []byte, isTestnet, isCompressed bool, err error) {
+func parseWIF(wifString string) (privKeyBytes []byte, isTestnet bool, isCompressed bool, err error) {
 	decoded, err := base58.Decode(wifString)
 	if err != nil {
 		return nil, false, false, fmt.Errorf("invalid base58 encoding: %w", err)
@@ -200,7 +200,7 @@ func parseWIF(wifString string) (privKeyBytes []byte, isTestnet, isCompressed bo
 }
 
 // encodeWIF generates a WIF string from a private key with the given network and compression.
-func encodeWIF(privKeyBytes []byte, isTestnet, isCompressed bool) string {
+func encodeWIF(privKeyBytes []byte, isTestnet bool, isCompressed bool) string {
 	prefix := mainnetWIFPrefix
 	if isTestnet {
 		prefix = testnetWIFPrefix
@@ -306,37 +306,37 @@ func c(color, text string) string {
 func printHuman(result *wifInfoResult) {
 	line := "────────────────────────────────────────────────────────────────────────"
 
-	fmt.Fprintln(os.Stdout, c(colorWhite, line))
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Input WIF:"), c(colorGreen, result.Input.WIF))
-	fmt.Fprintf(os.Stdout, "%s  %s\n", c(colorDim, "Network:"), c(colorGreen, result.Input.Network))
+	fmt.Println(c(colorWhite, line))
+	fmt.Printf("%s %s\n", c(colorDim, "Input WIF:"), c(colorGreen, result.Input.WIF))
+	fmt.Printf("%s  %s\n", c(colorDim, "Network:"), c(colorGreen, result.Input.Network))
 	compressed := "yes"
 	if !result.Input.Compressed {
 		compressed = "no"
 	}
-	fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Compressed:"), c(colorGreen, compressed))
+	fmt.Printf("%s %s\n", c(colorDim, "Compressed:"), c(colorGreen, compressed))
 
-	fmt.Fprintf(os.Stdout, "\n%s\n", c(colorDim, "Public Key:"))
-	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Compressed:"), c(colorGreen, result.PublicKey.Compressed))
+	fmt.Printf("\n%s\n", c(colorDim, "Public Key:"))
+	fmt.Printf("  %s %s\n", c(colorDim, "Compressed:"), c(colorGreen, result.PublicKey.Compressed))
 	if result.PublicKey.Uncompressed != "" {
-		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Uncompressed:"), c(colorGreen, result.PublicKey.Uncompressed))
+		fmt.Printf("  %s %s\n", c(colorDim, "Uncompressed:"), c(colorGreen, result.PublicKey.Uncompressed))
 	}
 
-	fmt.Fprintf(os.Stdout, "\n%s\n", c(colorWhite, "MAINNET"))
-	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Mainnet.WIF.Compressed))
-	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Mainnet.Address.Compressed))
+	fmt.Printf("\n%s\n", c(colorWhite, "MAINNET"))
+	fmt.Printf("  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Mainnet.WIF.Compressed))
+	fmt.Printf("  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Mainnet.Address.Compressed))
 	if showUncompr {
-		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Mainnet.WIF.Uncompressed))
-		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Mainnet.Address.Uncompressed))
+		fmt.Printf("  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Mainnet.WIF.Uncompressed))
+		fmt.Printf("  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Mainnet.Address.Uncompressed))
 	}
 
-	fmt.Fprintf(os.Stdout, "\n%s\n", c(colorWhite, "TESTNET"))
-	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Testnet.WIF.Compressed))
-	fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Testnet.Address.Compressed))
+	fmt.Printf("\n%s\n", c(colorWhite, "TESTNET"))
+	fmt.Printf("  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Testnet.WIF.Compressed))
+	fmt.Printf("  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Testnet.Address.Compressed))
 	if showUncompr {
-		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Testnet.WIF.Uncompressed))
-		fmt.Fprintf(os.Stdout, "  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Testnet.Address.Uncompressed))
+		fmt.Printf("  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Testnet.WIF.Uncompressed))
+		fmt.Printf("  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Testnet.Address.Uncompressed))
 	}
-	fmt.Fprintln(os.Stdout, c(colorWhite, line))
+	fmt.Println(c(colorWhite, line))
 }
 
 // init initializes the cobra command flags.

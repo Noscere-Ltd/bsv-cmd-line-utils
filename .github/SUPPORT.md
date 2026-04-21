@@ -8,8 +8,8 @@ Need help with **bsv-cmd-line-utils**? You're in the right place. Here’s how t
 
 Before asking, check the existing threads:
 
-* 🔍 Search [Issues](https://github.com/n0sc/bsv-cmd-line-utils/issues) or [Pull Requests](https://github.com/n0sc/bsv-cmd-line-utils/pulls?q=is%3Apr+is%3Aopen+is%3Aclosed)
-* 🆕 Can’t find what you need? Start a [new issue](https://github.com/n0sc/bsv-cmd-line-utils/issues/new?template=question.yml).
+* 🔍 Search [Issues](https://github.com/Noscere-Ltd/bsv-cmd-line-utils/issues) or [Pull Requests](https://github.com/Noscere-Ltd/bsv-cmd-line-utils/pulls?q=is%3Apr+is%3Aopen+is%3Aclosed)
+* 🆕 Can’t find what you need? Start a [new issue](https://github.com/Noscere-Ltd/bsv-cmd-line-utils/issues/new?template=question.yml).
 
 <br/>
 
@@ -17,7 +17,7 @@ Before asking, check the existing threads:
 
 Found a bug?
 
-1. Check the [issue tracker](https://github.com/n0sc/bsv-cmd-line-utils/issues) to avoid duplicates.
+1. Check the [issue tracker](https://github.com/Noscere-Ltd/bsv-cmd-line-utils/issues) to avoid duplicates.
 2. If it’s new, open an issue with:
 
 	* Clear steps to reproduce

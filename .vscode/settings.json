@@ -71,6 +71,7 @@
     "go.toolsManagement.autoUpdate": true,
     "go.useLanguageServer": true,
     "gopls": {
+
         "build.directoryFilters": [
             "-node_modules",
             "-vendor",
@@ -80,7 +81,7 @@
             "-.mage-cache"
         ],
         "formatting.gofumpt": true,
-        "formatting.local": "github.com/n0sc/bsv-cmd-line-utils",
+        "formatting.local": "github.com/Noscere-Ltd/bsv-cmd-line-utils",
         "symbolMatcher": "fastfuzzy",
         "symbolStyle": "full",
         "ui.completion.completeFunctionCalls": true,

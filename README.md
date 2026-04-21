@@ -26,7 +26,7 @@ All tools are single Go binaries with no runtime dependencies. Designed for Unix
 ## Installation
 
 ```bash
-git clone https://github.com/noscere-labs/bsv-cmd-line-utils.git
+git clone https://github.com/Noscere-Ltd/bsv-cmd-line-utils.git
 cd bsv-cmd-line-utils
 
 # Install all tools
