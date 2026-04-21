@@ -441,14 +441,14 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 
 	t.Run("nil script", func(t *testing.T) {
 		t.Parallel()
-		addr := extractAddressFromUnlockingScript(nil)
+		addr := extractAddressFromUnlockingScript(nil, true)
 		assert.Empty(t, addr)
 	})
 
 	t.Run("empty script", func(t *testing.T) {
 		t.Parallel()
 		s := script.Script([]byte{})
-		addr := extractAddressFromUnlockingScript(&s)
+		addr := extractAddressFromUnlockingScript(&s, true)
 		assert.Empty(t, addr)
 	})
 
@@ -460,7 +460,7 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 		scriptBytes := append([]byte{72}, sig...)
 		s := script.Script(scriptBytes)
 
-		addr := extractAddressFromUnlockingScript(&s)
+		addr := extractAddressFromUnlockingScript(&s, true)
 		assert.Empty(t, addr)
 	})
 
@@ -477,7 +477,7 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 		scriptBytes = append(scriptBytes, invalidPubKey...)
 		s := script.Script(scriptBytes)
 
-		addr := extractAddressFromUnlockingScript(&s)
+		addr := extractAddressFromUnlockingScript(&s, true)
 		// May or may not return empty depending on SDK behavior
 		// The important thing is it doesn't panic
 		_ = addr
