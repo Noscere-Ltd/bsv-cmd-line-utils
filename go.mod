@@ -4,7 +4,7 @@ go 1.24.3
 
 require (
 	github.com/bsv-blockchain/go-sdk v1.2.14
-	github.com/mrz1836/go-whatsonchain v1.0.0
+	github.com/mrz1836/go-whatsonchain v1.0.7
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.design/x/clipboard v0.7.1
