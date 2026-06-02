@@ -158,7 +158,7 @@ jobs:
           echo "✅ Branch helper functions created"
 
       - name: 📥 Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0 # Fetch all history including tags for version display
 
@@ -2338,7 +2338,7 @@ jobs:
           done
 
       - name: 📥 Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 2 # Need history for codecov to detect changes
 
@@ -2381,7 +2381,7 @@ jobs:
       # Upload to Codecov
       # --------------------------------------------------------------------
       - name: 📈 Upload coverage to Codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           #file: ./coverage.txt # This is the old format
           files: ./coverage-artifacts/coverage-data/coverage.txt
