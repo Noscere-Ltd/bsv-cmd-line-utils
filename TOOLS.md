@@ -1,6 +1,6 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+Command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
