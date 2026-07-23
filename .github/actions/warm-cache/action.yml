@@ -202,6 +202,22 @@ runs:
         echo "✅ Modules downloaded successfully"
 
     # ────────────────────────────────────────────────────────────────────────────
+    # Install cgo build dependencies
+    # golang.design/x/clipboard compiles clipboard_linux.c, which includes
+    # <X11/Xlib.h>. Without libx11-dev the pre-build below fails with
+    # "fatal error: X11/Xlib.h: No such file or directory".
+    # ────────────────────────────────────────────────────────────────────────────
+    - name: 📦 Install X11 development headers
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "📦 Installing X11 headers required by golang.design/x/clipboard (cgo)..."
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends libx11-dev
+        echo "✅ X11 headers installed"
+
+    # ────────────────────────────────────────────────────────────────────────────
     # Warm build cache when build cache missed
     # ────────────────────────────────────────────────────────────────────────────
     - name: 🏗️ Warm build cache (build cache miss)
