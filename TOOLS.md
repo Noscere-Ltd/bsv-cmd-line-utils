@@ -1,6 +1,8 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+> Documentation up to date as of commit: `c302b2f`
+
+Fourteen command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
@@ -8,12 +10,18 @@ Eight command-line tools for the full Bitcoin SV transaction lifecycle.
 - [Tools Overview](#tools-overview)
   - [keygen — Key Pair Generator](#keygen---key-pair-generator)
   - [wifinfo — WIF Key Inspector](#wifinfo---wif-key-inspector)
+  - [addr — Address Validator & Deriver](#addr---address-validator--deriver)
+  - [balance — Balance & UTXO Lister](#balance---balance--utxo-lister)
   - [carve — Transaction Builder](#carve---transaction-builder)
+  - [opreturn — OP_RETURN Transaction Builder](#opreturn---op_return-transaction-builder)
   - [broadcast — Transaction Broadcaster](#broadcast---transaction-broadcaster)
   - [txstatus — Status Checker](#txstatus---status-checker)
   - [getraw — Transaction Fetcher](#getraw---transaction-fetcher)
   - [prettytx — Transaction Parser](#prettytx---transaction-parser)
+  - [decodescript — Script Disassembler](#decodescript---script-disassembler)
   - [pick — Transaction Field Extractor](#pick---transaction-field-extractor)
+  - [signmsg — Bitcoin Signed Message Signer](#signmsg---bitcoin-signed-message-signer)
+  - [verifymsg — Bitcoin Signed Message Verifier](#verifymsg---bitcoin-signed-message-verifier)
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Transaction Size & Fees](#transaction-size--fees)
@@ -30,14 +38,20 @@ cd bsv-cmd-line-utils
 go install ./cmd/...
 
 # Or install individually
-go install ./cmd/keygen
-go install ./cmd/wifinfo
-go install ./cmd/carve
+go install ./cmd/addr
+go install ./cmd/balance
 go install ./cmd/broadcast
-go install ./cmd/txstatus
+go install ./cmd/carve
+go install ./cmd/decodescript
 go install ./cmd/getraw
-go install ./cmd/prettytx
+go install ./cmd/keygen
+go install ./cmd/opreturn
 go install ./cmd/pick
+go install ./cmd/prettytx
+go install ./cmd/signmsg
+go install ./cmd/txstatus
+go install ./cmd/verifymsg
+go install ./cmd/wifinfo
 ```
 
 ---
@@ -115,6 +129,79 @@ Shows for both mainnet and testnet:
 
 ---
 
+### addr — Address Validator & Deriver
+
+Validates BSV addresses (showing network and hash160) or derives mainnet/testnet addresses from a public key hex. Auto-detects input type: 66- or 130-hex-char input is treated as a public key, anything else as an address.
+
+#### Usage
+
+```bash
+addr <address>                  # Validate address
+addr <pubkey_hex>               # Derive addresses from public key
+echo <address> | addr           # From stdin
+addr -j <address>               # JSON output
+addr --no-color <address>       # Plain output (for scripting)
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+#### Output (validation)
+
+Address, `valid` flag, detected network, and hash160.
+
+#### Output (derivation)
+
+Public key plus derived mainnet and testnet addresses.
+
+---
+
+### balance — Balance & UTXO Lister
+
+Checks the balance of a BSV address via WhatsOnChain, and optionally lists its UTXOs. Accepts an address or a WIF; if given a WIF, derives the address automatically.
+
+#### Usage
+
+```bash
+balance <address>               # Check balance
+balance <wif>                   # Derive address from WIF, then check
+echo <address> | balance        # From stdin
+balance -t <address>            # Testnet
+balance -u <address>            # Also list UTXOs
+balance -j <address>            # JSON output
+balance --no-color <address>    # Plain output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--testnet` | `-t` | Use testnet | false |
+| `--utxos` | `-u` | Include UTXO list in output | false |
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+#### Output (JSON)
+
+```json
+{
+  "address": "1...",
+  "confirmed": 12345,
+  "unconfirmed": 0,
+  "total": 12345,
+  "bsv": 0.00012345,
+  "utxos": [ { "txHash": "...", "txPos": 0, "value": 12345, "height": 800000 } ]
+}
+```
+
+Uses WhatsOnChain — no configuration required.
+
+---
+
 ### carve — Transaction Builder
 
 Creates and signs BSV transactions with smart UTXO selection and automatic fee estimation.
@@ -163,6 +250,33 @@ Outputs raw transaction hex to stdout.
 5. Estimates fee based on transaction size
 6. Signs all inputs
 7. Outputs raw hex to stdout
+
+---
+
+### opreturn — OP_RETURN Transaction Builder
+
+Creates a signed BSV transaction whose sole non-change output is an `OP_RETURN` with the given data pushes. Multiple arguments become multiple pushdata parts. Outputs raw tx hex to stdout, ready to pipe into `broadcast`.
+
+#### Usage
+
+```bash
+opreturn -w <WIF> "hello world"                         # Single push
+opreturn -w <WIF> "prefix" "payload"                    # Two pushes
+opreturn -w <WIF> -t "hello"                            # Testnet
+opreturn -w <WIF> "hello" | broadcast                   # Build and broadcast
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | Source WIF private key (required) | - |
+| `--testnet` | `-t` | Use testnet | false |
+| `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
+| `--dust` | `-d` | Dust limit in satoshis | 1 |
+| `--debug` | - | Enable debug logging | false |
+
+Uses the same UTXO selection and fee logic as `carve`. All output value comes back as change; the OP_RETURN output itself carries zero satoshis.
 
 ---
 
@@ -319,6 +433,45 @@ Transaction ID: def456...
 
 ---
 
+### decodescript — Script Disassembler
+
+Decodes a hex-encoded Bitcoin script into opcodes (ASM), detects the script type, and extracts an address when the script is P2PKH.
+
+#### Usage
+
+```bash
+decodescript <hex>              # Decode from argument
+echo <hex> | decodescript       # From stdin
+decodescript -j <hex>           # JSON output
+decodescript --no-color <hex>   # Plain output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+#### Output (JSON)
+
+```json
+{
+  "asm": "OP_DUP OP_HASH160 ... OP_EQUALVERIFY OP_CHECKSIG",
+  "type": "P2PKH",
+  "size": 25,
+  "address": "1..."
+}
+```
+
+Pipes cleanly with `pick`:
+
+```bash
+getraw <txid> | pick --output-script 0 | decodescript
+```
+
+---
+
 ### pick — Transaction Field Extractor
 
 Extracts specific parts from raw BSV transactions and outputs them as hex strings, one per line. Designed for pipeline integration.
@@ -372,6 +525,56 @@ Accepts raw hex from argument, `-r` flag, stdin, `file://` path, or HTTP URL.
 
 ---
 
+### signmsg — Bitcoin Signed Message Signer
+
+Signs a message with a BSV private key using the Bitcoin Signed Message format. Prints the base64-encoded signature to stdout.
+
+#### Usage
+
+```bash
+signmsg -w <WIF> -m "hello"                     # Sign from flag
+echo "hello" | signmsg -w <WIF>                 # Sign from stdin
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key for signing (required) | - |
+| `--message` | `-m` | Message to sign | - |
+
+Pairs with `verifymsg` for message authentication:
+
+```bash
+SIG=$(echo "hello" | signmsg -w <WIF>)
+echo "hello" | verifymsg -a <address> -s "$SIG"
+```
+
+---
+
+### verifymsg — Bitcoin Signed Message Verifier
+
+Verifies a Bitcoin Signed Message signature against a BSV address. Exits 0 on valid signature, 1 on invalid.
+
+#### Usage
+
+```bash
+verifymsg -a <address> -s <base64_sig> -m "hello"
+echo "hello" | verifymsg -a <address> -s <base64_sig>
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--address` | `-a` | BSV address to verify against (required) | - |
+| `--signature` | `-s` | Base64-encoded signature (required) | - |
+| `--message` | `-m` | Message to verify | - |
+
+Prints `Valid` on success or `Invalid: <reason>` on failure.
+
+---
+
 ## Configuration
 
 ### ARC Configuration (broadcast, txstatus)
@@ -399,7 +602,7 @@ targets:
   wait_for_mining: false
 ```
 
-### WhatsOnChain (carve, getraw)
+### WhatsOnChain (addr, balance, carve, getraw, opreturn)
 
 No configuration needed. Uses public API endpoints:
 - Mainnet: `https://api.whatsonchain.com/v1/bsv/main/`
@@ -552,7 +755,8 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 
 | Endpoint | Used By |
 |----------|---------|
-| `GET /v1/bsv/{net}/address/{addr}/unspent/all` | carve |
+| `GET /v1/bsv/{net}/address/{addr}/unspent/all` | carve, opreturn, balance |
+| `GET /v1/bsv/{net}/address/{addr}/balance` | balance |
 | `GET /v1/bsv/{net}/tx/{txid}/hex` | getraw |
 
 ### ARC (API key required)

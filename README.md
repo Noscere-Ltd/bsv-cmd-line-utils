@@ -1,5 +1,7 @@
 # BSV Command Line Tools
 
+> Documentation up to date as of commit: `c302b2f`
+
 A suite of command-line utilities for the full Bitcoin SV transaction lifecycle: key generation, transaction building, broadcasting, inspection, field extraction, and status tracking.
 
 All tools are single Go binaries with no runtime dependencies. Designed for Unix-style pipeline composition.
