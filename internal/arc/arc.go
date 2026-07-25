@@ -12,10 +12,16 @@ package arc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+)
+
+var (
+	errRequestFailedStatus = errors.New("request failed with HTTP status")
+	errARC                 = errors.New("ARC error")
 )
 
 // Transaction statuses based on ARC specification
@@ -30,8 +36,8 @@ const (
 	StatusDoubleSpend        = "DOUBLE_SPEND_ATTEMPTED"
 )
 
-// ARCClient handles communication with ARC endpoints
-type ARCClient struct {
+// Client handles communication with ARC endpoints
+type Client struct {
 	baseURL string
 	apiKey  string
 	client  *http.Client
@@ -68,8 +74,8 @@ type ErrorResponse struct {
 }
 
 // NewARCClient creates a new ARC client
-func NewARCClient(baseURL, apiKey string) *ARCClient {
-	return &ARCClient{
+func NewARCClient(baseURL, apiKey string) *Client {
+	return &Client{
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 		apiKey:  apiKey,
 		client: &http.Client{
@@ -78,8 +84,22 @@ func NewARCClient(baseURL, apiKey string) *ARCClient {
 	}
 }
 
+// decodeErrorResponse reads a non-success ARC response body and returns a descriptive error.
+func decodeErrorResponse(resp *http.Response) error {
+	var errorResp ErrorResponse
+	if err := json.NewDecoder(resp.Body).Decode(&errorResp); err != nil {
+		return fmt.Errorf("request failed with status %d: %w", resp.StatusCode, err)
+	}
+
+	if errorResp.Error == "" {
+		return fmt.Errorf("%w %d", errRequestFailedStatus, resp.StatusCode)
+	}
+
+	return fmt.Errorf("%w: %s (HTTP %d, code: %d)", errARC, errorResp.Error, resp.StatusCode, errorResp.Code)
+}
+
 // BroadcastTransaction broadcasts a transaction to the ARC network
-func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, error) {
+func (c *Client) BroadcastTransaction(rawTx string) (*TransactionResponse, error) {
 	url := c.baseURL + "/v1/tx"
 
 	reqBody := TransactionRequest{
@@ -97,6 +117,7 @@ func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, er
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+
 	if c.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
@@ -108,14 +129,7 @@ func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, er
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&errorResp); err != nil {
-			return nil, fmt.Errorf("request failed with status %d: %w", resp.StatusCode, err)
-		}
-		if errorResp.Error == "" {
-			return nil, fmt.Errorf("request failed with HTTP status %d", resp.StatusCode)
-		}
-		return nil, fmt.Errorf("ARC error: %s (HTTP %d, code: %d)", errorResp.Error, resp.StatusCode, errorResp.Code)
+		return nil, decodeErrorResponse(resp)
 	}
 
 	var txResp TransactionResponse
@@ -127,7 +141,7 @@ func (c *ARCClient) BroadcastTransaction(rawTx string) (*TransactionResponse, er
 }
 
 // GetTransactionStatus checks the status of a transaction
-func (c *ARCClient) GetTransactionStatus(txid string) (*TransactionStatus, error) {
+func (c *Client) GetTransactionStatus(txid string) (*TransactionStatus, error) {
 	url := c.baseURL + "/v1/tx/" + txid
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
@@ -146,14 +160,7 @@ func (c *ARCClient) GetTransactionStatus(txid string) (*TransactionStatus, error
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&errorResp); err != nil {
-			return nil, fmt.Errorf("request failed with status %d: %w", resp.StatusCode, err)
-		}
-		if errorResp.Error == "" {
-			return nil, fmt.Errorf("request failed with HTTP status %d", resp.StatusCode)
-		}
-		return nil, fmt.Errorf("ARC error: %s (HTTP %d, code: %d)", errorResp.Error, resp.StatusCode, errorResp.Code)
+		return nil, decodeErrorResponse(resp)
 	}
 
 	var status TransactionStatus

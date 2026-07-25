@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const hexLower = "abcdef"
+
+var errMockRead = errors.New("mock read error")
+
 func TestIsValidHex(t *testing.T) {
 	t.Parallel()
 
@@ -20,7 +24,7 @@ func TestIsValidHex(t *testing.T) {
 		expected bool
 	}{
 		// Valid hex strings
-		{name: "lowercase hex", input: "abcdef", expected: true},
+		{name: "lowercase hex", input: hexLower, expected: true},
 		{name: "uppercase hex", input: "ABCDEF", expected: true},
 		{name: "mixed case hex", input: "AbCdEf", expected: true},
 		{name: "numeric hex", input: "0123456789", expected: true},
@@ -50,6 +54,7 @@ func TestIsValidHex(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := IsValidHex(tt.input)
 			assert.Equal(t, tt.expected, result, "IsValidHex(%q) = %v, want %v", tt.input, result, tt.expected)
 		})
@@ -66,16 +71,16 @@ func TestReadHexFromReader(t *testing.T) {
 		expectError bool
 	}{
 		// Valid inputs
-		{name: "simple hex", input: "abcdef", expected: "abcdef"},
+		{name: "simple hex", input: hexLower, expected: hexLower},
 		{name: "hex with newlines", input: "abc\ndef\n123", expected: "abcdef123"},
 		{name: "hex with spaces", input: "abc def 123", expected: "abcdef123"},
 		{name: "hex with tabs", input: "abc\tdef\t123", expected: "abcdef123"},
-		{name: "hex with carriage return", input: "abc\r\ndef", expected: "abcdef"},
+		{name: "hex with carriage return", input: "abc\r\ndef", expected: hexLower},
 		{name: "hex with mixed whitespace", input: "  abc \n def \t 123  ", expected: "abcdef123"},
 		{name: "empty input", input: "", expected: ""},
 		{name: "only whitespace", input: "   \n\t  ", expected: ""},
 		{name: "multiple lines", input: "line1\nline2\nline3", expected: "line1line2line3"},
-		{name: "control characters stripped", input: "abc\x00\x01\x02def", expected: "abcdef"},
+		{name: "control characters stripped", input: "abc\x00\x01\x02def", expected: hexLower},
 		{name: "printable ASCII retained", input: "abc!@#$%^&*()def", expected: "abc!@#$%^&*()def"},
 
 		// Boundary cases
@@ -88,6 +93,7 @@ func TestReadHexFromReader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			reader := strings.NewReader(tt.input)
 			result, err := ReadHexFromReader(reader)
 
@@ -106,14 +112,14 @@ type errorReader struct {
 	err error
 }
 
-func (e *errorReader) Read(p []byte) (n int, err error) {
+func (e *errorReader) Read(_ []byte) (n int, err error) {
 	return 0, e.err
 }
 
 func TestReadHexFromReaderError(t *testing.T) {
 	t.Parallel()
 
-	expectedErr := errors.New("mock read error")
+	expectedErr := errMockRead
 	reader := &errorReader{err: expectedErr}
 
 	_, err := ReadHexFromReader(reader)
@@ -144,14 +150,14 @@ func TestCleanString(t *testing.T) {
 	}{
 		// Basic cases
 		{name: "empty string", input: "", expected: ""},
-		{name: "no changes needed", input: "abcdef", expected: "abcdef"},
-		{name: "remove spaces", input: "abc def", expected: "abcdef"},
-		{name: "remove tabs", input: "abc\tdef", expected: "abcdef"},
-		{name: "remove newlines", input: "abc\ndef", expected: "abcdef"},
-		{name: "remove carriage returns", input: "abc\rdef", expected: "abcdef"},
+		{name: "no changes needed", input: hexLower, expected: hexLower},
+		{name: "remove spaces", input: "abc def", expected: hexLower},
+		{name: "remove tabs", input: "abc\tdef", expected: hexLower},
+		{name: "remove newlines", input: "abc\ndef", expected: hexLower},
+		{name: "remove carriage returns", input: "abc\rdef", expected: hexLower},
 
 		// Control characters
-		{name: "remove null bytes", input: "abc\x00def", expected: "abcdef"},
+		{name: "remove null bytes", input: "abc\x00def", expected: hexLower},
 		{name: "remove all control chars", input: "\x00\x01\x02abc\x1f", expected: "abc"},
 
 		// Boundary ASCII values
@@ -166,8 +172,8 @@ func TestCleanString(t *testing.T) {
 		{name: "keep mixed", input: "abc123!@#", expected: "abc123!@#"},
 
 		// Unicode (should be removed as > 127)
-		{name: "remove unicode", input: "abc\u4e16\u754cdef", expected: "abcdef"},
-		{name: "remove emoji", input: "abc😀def", expected: "abcdef"},
+		{name: "remove unicode", input: "abc\u4e16\u754cdef", expected: hexLower},
+		{name: "remove emoji", input: "abc😀def", expected: hexLower},
 
 		// Only non-printable
 		{name: "only spaces", input: "     ", expected: ""},
@@ -178,6 +184,7 @@ func TestCleanString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := CleanString(tt.input)
 			assert.Equal(t, tt.expected, result, "CleanString(%q) = %q, want %q", tt.input, result, tt.expected)
 		})
@@ -191,7 +198,7 @@ func BenchmarkIsValidHex(b *testing.B) {
 		name  string
 		input string
 	}{
-		{"short_valid", "abcdef"},
+		{"short_valid", hexLower},
 		{"medium_valid", "0123456789abcdef0123456789abcdef"},
 		{"long_valid", strings.Repeat("deadbeef", 100)},
 		{"txid_length", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
@@ -232,6 +239,7 @@ func BenchmarkReadHexFromReader(b *testing.B) {
 	input := strings.Repeat("abcdef123456\n", 100)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		reader := strings.NewReader(input)
 		_, _ = ReadHexFromReader(reader)
@@ -245,7 +253,7 @@ func FuzzIsValidHex(f *testing.F) {
 	seeds := []string{
 		"",
 		"a",
-		"abcdef",
+		hexLower,
 		"ABCDEF",
 		"0123456789",
 		"ghijklmnop",
@@ -266,6 +274,7 @@ func FuzzIsValidHex(f *testing.F) {
 				isHexChar := (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 				require.True(t, isHexChar, "IsValidHex returned true but found non-hex char: %c", c)
 			}
+
 			require.NotEmpty(t, input, "IsValidHex returned true for empty string")
 		}
 	})
@@ -322,7 +331,7 @@ func TestReadHexFromReaderEOF(t *testing.T) {
 func TestReadHexFromReaderFullyConsumes(t *testing.T) {
 	t.Parallel()
 
-	input := "abcdef"
+	input := hexLower
 	reader := strings.NewReader(input)
 
 	_, err := ReadHexFromReader(reader)

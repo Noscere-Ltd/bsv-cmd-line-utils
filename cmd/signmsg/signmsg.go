@@ -1,6 +1,9 @@
+// Package main implements the signmsg CLI tool, which signs a message with a
+// BSV private key using the Bitcoin Signed Message format.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,33 +15,55 @@ import (
 )
 
 var (
-	wifFlag     string
-	messageFlag string
+	errWifRequired    = errors.New("--wif is required")
+	errNoMessageInput = errors.New("no message provided (use --message or pipe via stdin)")
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "signmsg",
-	Short: "Sign a message with a BSV private key (Bitcoin Signed Message)",
-	Long:  "A command line tool that signs a message using Bitcoin Signed Message format. Outputs base64 signature to stdout",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return run(cmd)
-	},
-}
+func newRootCmd() *cobra.Command {
+	var (
+		wifFlag     string
+		messageFlag string
+	)
 
-func run(cmd *cobra.Command) error {
-	if wifFlag == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("--wif is required")
+	cmd := &cobra.Command{
+		Use:   "signmsg",
+		Short: "Sign a message with a BSV private key (Bitcoin Signed Message)",
+		Long:  "A command line tool that signs a message using Bitcoin Signed Message format. Outputs base64 signature to stdout",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return run(cmd, wifFlag, messageFlag)
+		},
 	}
 
-	message, err := getMessage(cmd)
+	cmd.Flags().StringVarP(&wifFlag, "wif", "w", "", "WIF private key for signing (required)")
+	cmd.Flags().StringVarP(&messageFlag, "message", "m", "", "Message to sign")
+
+	if err := cmd.MarkFlagRequired("wif"); err != nil {
+		panic(err)
+	}
+
+	return cmd
+}
+
+func run(cmd *cobra.Command, wifFlag, messageFlag string) error {
+	if wifFlag == "" {
+		if err := cmd.Help(); err != nil {
+			return err
+		}
+
+		return errWifRequired
+	}
+
+	message, err := getMessage(messageFlag)
 	if err != nil {
 		return err
 	}
 
 	if message == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("no message provided (use --message or pipe via stdin)")
+		if helpErr := cmd.Help(); helpErr != nil {
+			return helpErr
+		}
+
+		return errNoMessageInput
 	}
 
 	privKey, err := ec.PrivateKeyFromWif(wifFlag)
@@ -51,11 +76,12 @@ func run(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to sign message: %w", err)
 	}
 
-	fmt.Println(sig)
+	_, _ = fmt.Fprintln(os.Stdout, sig)
+
 	return nil
 }
 
-func getMessage(cmd *cobra.Command) (string, error) {
+func getMessage(messageFlag string) (string, error) {
 	if messageFlag != "" {
 		return messageFlag, nil
 	}
@@ -68,15 +94,10 @@ func getMessage(cmd *cobra.Command) (string, error) {
 	return "", nil
 }
 
-func init() {
-	rootCmd.Flags().StringVarP(&wifFlag, "wif", "w", "", "WIF private key for signing (required)")
-	rootCmd.Flags().StringVarP(&messageFlag, "message", "m", "", "Message to sign")
-	rootCmd.MarkFlagRequired("wif") //nolint:errcheck
-}
-
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := newRootCmd().Execute(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 		os.Exit(1)
 	}
 }

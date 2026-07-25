@@ -24,6 +24,7 @@ func IsValidHex(s string) bool {
 	if s == "" {
 		return false
 	}
+
 	return hexRegex.MatchString(s)
 }
 
@@ -34,6 +35,7 @@ func IsValidHex(s string) bool {
 // Returns the cleaned hex string and any error encountered during reading.
 func ReadHexFromReader(r io.Reader) (string, error) {
 	scanner := bufio.NewScanner(r)
+
 	var result strings.Builder
 	// Pre-allocate some capacity for typical hex strings
 	result.Grow(256)
@@ -58,6 +60,7 @@ func ReadTextFromReader(r io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return strings.TrimRight(string(data), "\n\r"), nil
 }
 
@@ -68,6 +71,7 @@ func CleanString(s string) string {
 		if r > 32 && r < 127 {
 			return r
 		}
+
 		return -1
 	}, s)
 }

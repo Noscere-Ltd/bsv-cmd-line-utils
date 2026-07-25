@@ -1,8 +1,10 @@
+// Package main implements the decodescript CLI tool for decoding Bitcoin scripts to human-readable ASM.
 package main
 
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -20,8 +22,8 @@ const (
 )
 
 var (
-	jsonFlag bool
-	noColor  bool
+	errNoScriptHexProvided = errors.New("no script hex provided")
+	errInvalidHexString    = errors.New("invalid hex string")
 )
 
 type decodeResult struct {
@@ -31,39 +33,70 @@ type decodeResult struct {
 	Address string `json:"address,omitempty"`
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "decodescript [hex]",
-	Short: "Decode a Bitcoin script to human-readable ASM",
-	Long:  "A command line tool that decodes a hex-encoded Bitcoin script into opcodes, detects script type, and extracts addresses",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return run(cmd, args)
-	},
+func newRootCmd() *cobra.Command {
+	var (
+		jsonFlag bool
+		noColor  bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "decodescript [hex]",
+		Short: "Decode a Bitcoin script to human-readable ASM",
+		Long:  "A command line tool that decodes a hex-encoded Bitcoin script into opcodes, detects script type, and extracts addresses",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd, args, jsonFlag, noColor)
+		},
+	}
+
+	cmd.Flags().BoolVarP(&jsonFlag, "json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+
+	return cmd
 }
 
-func run(cmd *cobra.Command, args []string) error {
-	input, err := getInput(cmd, args)
+func run(cmd *cobra.Command, args []string, jsonFlag, noColor bool) error {
+	input, err := getInput(args)
 	if err != nil {
 		return err
 	}
 
 	if input == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("no script hex provided")
+		if helpErr := cmd.Help(); helpErr != nil {
+			return helpErr
+		}
+
+		return errNoScriptHexProvided
 	}
 
 	if !cli.IsValidHex(input) {
-		return fmt.Errorf("invalid hex string: %s", input)
+		return fmt.Errorf("%w: %s", errInvalidHexString, input)
 	}
 
+	result, err := decodeScript(input)
+	if err != nil {
+		return err
+	}
+
+	if jsonFlag {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+
+		return enc.Encode(result)
+	}
+
+	return printHuman(result, noColor)
+}
+
+func decodeScript(input string) (*decodeResult, error) {
 	scriptBytes, err := hex.DecodeString(input)
 	if err != nil {
-		return fmt.Errorf("failed to decode hex: %w", err)
+		return nil, fmt.Errorf("failed to decode hex: %w", err)
 	}
 
 	s := script.Script(scriptBytes)
 
-	result := decodeResult{
+	result := &decodeResult{
 		ASM:  s.ToASM(),
 		Type: detectType(&s),
 		Size: len(scriptBytes),
@@ -72,23 +105,17 @@ func run(cmd *cobra.Command, args []string) error {
 	// Extract address for P2PKH scripts
 	if s.IsP2PKH() && len(scriptBytes) == 25 {
 		hash160 := scriptBytes[3:23]
+
 		addr, err := script.NewAddressFromPublicKeyHash(hash160, true)
 		if err == nil {
 			result.Address = addr.AddressString
 		}
 	}
 
-	if jsonFlag {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(result)
-	}
-
-	printHuman(&result)
-	return nil
+	return result, nil
 }
 
-func getInput(cmd *cobra.Command, args []string) (string, error) {
+func getInput(args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -118,29 +145,38 @@ func detectType(s *script.Script) string {
 	}
 }
 
-func c(color, text string) string {
+func c(noColor bool, color, text string) string {
 	if noColor {
 		return text
 	}
+
 	return color + text + colorReset
 }
 
-func printHuman(result *decodeResult) {
-	fmt.Printf("%s %s\n", c(colorDim, "ASM:"), c(colorGreen, result.ASM))
-	fmt.Printf("%s %s\n", c(colorDim, "Type:"), c(colorGreen, result.Type))
-	fmt.Printf("%s %s\n", c(colorDim, "Size:"), c(colorGreen, fmt.Sprintf("%d bytes", result.Size)))
-	if result.Address != "" {
-		fmt.Printf("%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
+func printHuman(result *decodeResult, noColor bool) error {
+	if _, err := fmt.Fprintf(os.Stdout, "%s %s\n", c(noColor, colorDim, "ASM:"), c(noColor, colorGreen, result.ASM)); err != nil {
+		return err
 	}
-}
 
-func init() {
-	rootCmd.Flags().BoolVarP(&jsonFlag, "json", "j", false, "Output in JSON format")
-	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+	if _, err := fmt.Fprintf(os.Stdout, "%s %s\n", c(noColor, colorDim, "Type:"), c(noColor, colorGreen, result.Type)); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(os.Stdout, "%s %s\n", c(noColor, colorDim, "Size:"), c(noColor, colorGreen, fmt.Sprintf("%d bytes", result.Size))); err != nil {
+		return err
+	}
+
+	if result.Address != "" {
+		if _, err := fmt.Fprintf(os.Stdout, "%s %s\n", c(noColor, colorDim, "Address:"), c(noColor, colorGreen, result.Address)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

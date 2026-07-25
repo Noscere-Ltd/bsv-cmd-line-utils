@@ -35,18 +35,21 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("empty script", func(t *testing.T) {
 		t.Parallel()
+
 		s := script.Script([]byte{})
 		assert.False(t, isP2PKH(&s))
 	})
 
 	t.Run("too short", func(t *testing.T) {
 		t.Parallel()
+
 		s := script.Script([]byte{0x76, 0xa9, 0x14})
 		assert.False(t, isP2PKH(&s))
 	})
 
 	t.Run("too long", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 26)
 		scriptBytes[0] = 0x76
 		scriptBytes[1] = 0xa9
@@ -59,6 +62,7 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("wrong first opcode", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 25)
 		scriptBytes[0] = 0x00 // Wrong - should be 0x76 (OP_DUP)
 		scriptBytes[1] = 0xa9
@@ -71,6 +75,7 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("wrong second opcode", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 25)
 		scriptBytes[0] = 0x76
 		scriptBytes[1] = 0x00 // Wrong - should be 0xa9 (OP_HASH160)
@@ -83,6 +88,7 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("wrong push length", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 25)
 		scriptBytes[0] = 0x76
 		scriptBytes[1] = 0xa9
@@ -95,6 +101,7 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("wrong equalverify opcode", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 25)
 		scriptBytes[0] = 0x76
 		scriptBytes[1] = 0xa9
@@ -107,6 +114,7 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("wrong checksig opcode", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 25)
 		scriptBytes[0] = 0x76
 		scriptBytes[1] = 0xa9
@@ -119,6 +127,7 @@ func TestIsP2PKH(t *testing.T) {
 
 	t.Run("exactly 24 bytes (one too short)", func(t *testing.T) {
 		t.Parallel()
+
 		scriptBytes := make([]byte, 24)
 		scriptBytes[0] = 0x76
 		scriptBytes[1] = 0xa9
@@ -150,6 +159,7 @@ func TestExtractP2PKHAddress(t *testing.T) {
 
 		// Should return a valid address string starting with '1' for mainnet
 		assert.NotEmpty(t, addr)
+
 		if addr != "" {
 			assert.True(t, addr[0] == '1' || addr[0] == '3', "Mainnet address should start with 1 or 3")
 		}
@@ -172,6 +182,7 @@ func TestExtractP2PKHAddress(t *testing.T) {
 
 		// Should return a valid address string starting with 'm' or 'n' for testnet
 		assert.NotEmpty(t, addr)
+
 		if addr != "" {
 			assert.True(t, addr[0] == 'm' || addr[0] == 'n', "Testnet address should start with m or n")
 		}
@@ -190,6 +201,7 @@ func TestExtractP2PKHAddress(t *testing.T) {
 
 	t.Run("nil script", func(t *testing.T) {
 		t.Parallel()
+
 		addr := extractP2PKHAddress(nil, true)
 		assert.Empty(t, addr)
 	})
@@ -335,37 +347,30 @@ func TestExtractPublicKeyFromScript(t *testing.T) {
 }
 
 func TestC(t *testing.T) {
-	// This test manipulates the global noColor variable
-	// and should not run in parallel with other tests that use it
+	t.Parallel()
 
 	t.Run("color enabled", func(t *testing.T) {
-		originalNoColor := noColor
-		noColor = false
-		defer func() { noColor = originalNoColor }()
+		t.Parallel()
 
-		result := c(colorRed, "test")
+		result := printer{noColor: false}.c(colorRed, "test")
 		assert.Contains(t, result, colorRed)
 		assert.Contains(t, result, "test")
 		assert.Contains(t, result, colorReset)
 	})
 
 	t.Run("color disabled", func(t *testing.T) {
-		originalNoColor := noColor
-		noColor = true
-		defer func() { noColor = originalNoColor }()
+		t.Parallel()
 
-		result := c(colorRed, "test")
+		result := printer{noColor: true}.c(colorRed, "test")
 		assert.Equal(t, "test", result)
 		assert.NotContains(t, result, colorRed)
 		assert.NotContains(t, result, colorReset)
 	})
 
 	t.Run("empty text", func(t *testing.T) {
-		originalNoColor := noColor
-		noColor = false
-		defer func() { noColor = originalNoColor }()
+		t.Parallel()
 
-		result := c(colorGreen, "")
+		result := printer{noColor: false}.c(colorGreen, "")
 		assert.Equal(t, colorGreen+colorReset, result)
 	})
 }
@@ -394,6 +399,7 @@ func BenchmarkIsP2PKH(b *testing.B) {
 	s := script.Script(scriptBytes)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = isP2PKH(&s)
 	}
@@ -409,6 +415,7 @@ func BenchmarkExtractPublicKeyFromScript(b *testing.B) {
 	scriptBytes = append(scriptBytes, pubKey...)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = extractPublicKeyFromScript(scriptBytes)
 	}
@@ -441,14 +448,16 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 
 	t.Run("nil script", func(t *testing.T) {
 		t.Parallel()
-		addr := extractAddressFromUnlockingScript(nil, true)
+
+		addr := extractAddressFromUnlockingScript(nil)
 		assert.Empty(t, addr)
 	})
 
 	t.Run("empty script", func(t *testing.T) {
 		t.Parallel()
+
 		s := script.Script([]byte{})
-		addr := extractAddressFromUnlockingScript(&s, true)
+		addr := extractAddressFromUnlockingScript(&s)
 		assert.Empty(t, addr)
 	})
 
@@ -460,7 +469,7 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 		scriptBytes := append([]byte{72}, sig...)
 		s := script.Script(scriptBytes)
 
-		addr := extractAddressFromUnlockingScript(&s, true)
+		addr := extractAddressFromUnlockingScript(&s)
 		assert.Empty(t, addr)
 	})
 
@@ -477,7 +486,7 @@ func TestExtractAddressFromUnlockingScript(t *testing.T) {
 		scriptBytes = append(scriptBytes, invalidPubKey...)
 		s := script.Script(scriptBytes)
 
-		addr := extractAddressFromUnlockingScript(&s, true)
+		addr := extractAddressFromUnlockingScript(&s)
 		// May or may not return empty depending on SDK behavior
 		// The important thing is it doesn't panic
 		_ = addr

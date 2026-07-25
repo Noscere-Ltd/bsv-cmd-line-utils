@@ -1,8 +1,10 @@
+// Package main implements the opreturn CLI tool for building and signing BSV OP_RETURN transactions.
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -28,137 +30,96 @@ const (
 )
 
 var (
-	wifFlag   string
+	errWifRequired       = errors.New("--wif is required")
+	errNoDataProvided    = errors.New("no data provided")
+	errNoUTXOsForAddress = errors.New("no UTXOs found for address")
+	errWhatsOnChainAPI   = errors.New("WhatsOnChain API error")
+	errAPIError          = errors.New("API error")
+	errNoUTXOsAvailable  = errors.New("no UTXOs available")
+	errInsufficientFunds = errors.New("insufficient funds")
+)
+
+// opreturnFlags holds the CLI flag values for the opreturn command.
+type opreturnFlags struct {
+	wif       string
 	testnet   bool
 	feePerKb  uint64
 	dustLimit uint64
 	debug     bool
-)
-
-var rootCmd = &cobra.Command{
-	Use:   "opreturn [data...]",
-	Short: "Create a transaction with an OP_RETURN output",
-	Long:  "A command line tool that creates a signed BSV transaction with an OP_RETURN data output. Multiple arguments become multiple pushdata parts. Outputs raw tx hex to stdout",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if wifFlag == "" {
-			cmd.Help() //nolint:errcheck
-			return fmt.Errorf("--wif is required")
-		}
-		return buildOpReturn(args)
-	},
 }
 
-func buildOpReturn(args []string) error {
+func newRootCmd() *cobra.Command {
+	var flags opreturnFlags
+
+	cmd := &cobra.Command{
+		Use:   "opreturn [data...]",
+		Short: "Create a transaction with an OP_RETURN output",
+		Long:  "A command line tool that creates a signed BSV transaction with an OP_RETURN data output. Multiple arguments become multiple pushdata parts. Outputs raw tx hex to stdout",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if flags.wif == "" {
+				cmd.Help() //nolint:errcheck,gosec // help output failure is not actionable here
+				return errWifRequired
+			}
+
+			return buildOpReturn(args, flags)
+		},
+	}
+
+	cmd.Flags().StringVarP(&flags.wif, "wif", "w", "", "WIF private key for signing (required)")
+	cmd.Flags().BoolVarP(&flags.testnet, "testnet", "t", false, "Use testnet")
+	cmd.Flags().Uint64VarP(&flags.feePerKb, "fee-per-kb", "f", 100, "Fee per kilobyte in satoshis")
+	cmd.Flags().Uint64VarP(&flags.dustLimit, "dust", "d", 1, "Dust limit in satoshis")
+	cmd.Flags().BoolVar(&flags.debug, "debug", false, "Enable debug logging")
+
+	if err := cmd.MarkFlagRequired("wif"); err != nil {
+		panic(err)
+	}
+
+	return cmd
+}
+
+func buildOpReturn(args []string, flags opreturnFlags) error {
 	ctx := context.Background()
 
-	// Get data payloads
 	parts, err := getDataParts(args)
 	if err != nil {
 		return err
 	}
 
 	if len(parts) == 0 {
-		return fmt.Errorf("no data provided")
+		return errNoDataProvided
 	}
 
-	// Parse WIF and derive address
-	privKey, err := ec.PrivateKeyFromWif(wifFlag)
+	privKey, sourceAddr, selected, err := prepareInputs(ctx, flags)
 	if err != nil {
-		return fmt.Errorf("failed to parse WIF: %w", err)
+		return err
 	}
 
-	sourceAddr, err := script.NewAddressFromPublicKey(privKey.PubKey(), !testnet)
-	if err != nil {
-		return fmt.Errorf("failed to derive address: %w", err)
-	}
-
-	if debug {
-		log.Printf("Source address: %s", sourceAddr.AddressString)
-	}
-
-	// Fetch UTXOs
-	utxos, err := getUnspentOutputs(ctx, sourceAddr.AddressString)
-	if err != nil {
-		return fmt.Errorf("failed to fetch UTXOs: %w", err)
-	}
-
-	if len(utxos) == 0 {
-		return fmt.Errorf("no UTXOs found for address %s", sourceAddr.AddressString)
-	}
-
-	if debug {
-		log.Printf("Found %d UTXO(s)", len(utxos))
-	}
-
-	// Select UTXOs (target amount = 0, just need fee coverage)
-	selected, err := selectUTXOs(utxos, 0, feePerKb)
-	if err != nil {
-		return fmt.Errorf("UTXO selection failed: %w", err)
-	}
-
-	// Build transaction
 	tx := transaction.NewTransaction()
 
-	// Create unlocker
-	unlocker, err := p2pkh.Unlock(privKey, nil)
+	totalInput, err := addInputs(tx, selected, sourceAddr, privKey)
 	if err != nil {
-		return fmt.Errorf("failed to create unlocker: %w", err)
+		return err
 	}
 
-	// Add inputs
-	var totalInput uint64
-	for _, utxo := range selected {
-		lockingScript, err := p2pkh.Lock(sourceAddr)
-		if err != nil {
-			return fmt.Errorf("failed to create locking script: %w", err)
-		}
-		err = tx.AddInputFrom(utxo.TxHash, utxo.TxPos, lockingScript.String(), utxo.Value, unlocker)
-		if err != nil {
-			return fmt.Errorf("failed to add input: %w", err)
-		}
-		totalInput += utxo.Value
+	if err = addOpReturnOutputs(tx, parts); err != nil {
+		return err
 	}
 
-	// Add OP_RETURN output
-	if len(parts) == 1 {
-		if err := tx.AddOpReturnOutput(parts[0]); err != nil {
-			return fmt.Errorf("failed to add OP_RETURN output: %w", err)
-		}
-	} else {
-		if err := tx.AddOpReturnPartsOutput(parts); err != nil {
-			return fmt.Errorf("failed to add OP_RETURN output: %w", err)
-		}
+	fee, err := addChangeOutput(tx, sourceAddr, totalInput, flags)
+	if err != nil {
+		return err
 	}
 
-	// Calculate fee and add change output
-	estimatedSize := uint64(len(tx.Inputs)*inputSize + (len(tx.Outputs)+1)*outputSize + baseTxSize)
-	fee := (estimatedSize * feePerKb) / 1000
-	if fee < minFee {
-		fee = minFee
-	}
-
-	if debug {
+	if flags.debug {
 		log.Printf("Total input: %d sats, Estimated fee: %d sats", totalInput, fee)
 	}
 
-	change := totalInput - fee
-	if change > dustLimit {
-		changeLockingScript, err := p2pkh.Lock(sourceAddr)
-		if err != nil {
-			return fmt.Errorf("failed to create change locking script: %w", err)
-		}
-		tx.AddOutput(&transaction.TransactionOutput{
-			Satoshis:      change,
-			LockingScript: changeLockingScript,
-		})
-		if debug {
-			log.Printf("Change: %d sats", change)
-		}
-	} else if debug {
-		log.Printf("Change (%d sats) below dust limit, adding to fee", change)
-	}
+	return signAndPrint(tx, flags.debug)
+}
 
-	// Sign
+// signAndPrint signs tx and writes its raw hex to stdout.
+func signAndPrint(tx *transaction.Transaction, debug bool) error {
 	if err := tx.Sign(); err != nil {
 		return fmt.Errorf("failed to sign transaction: %w", err)
 	}
@@ -167,8 +128,124 @@ func buildOpReturn(args []string) error {
 		log.Printf("Transaction ID: %s", tx.TxID().String())
 	}
 
-	fmt.Println(tx.String())
+	if _, err := fmt.Fprintln(os.Stdout, tx.String()); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// prepareInputs derives the signing key and address from the WIF flag, then fetches and
+// selects enough UTXOs to cover the OP_RETURN transaction's fee.
+func prepareInputs(ctx context.Context, flags opreturnFlags) (*ec.PrivateKey, *script.Address, []*UTXO, error) {
+	privKey, err := ec.PrivateKeyFromWif(flags.wif)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to parse WIF: %w", err)
+	}
+
+	sourceAddr, err := script.NewAddressFromPublicKey(privKey.PubKey(), !flags.testnet)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to derive address: %w", err)
+	}
+
+	if flags.debug {
+		log.Printf("Source address: %s", sourceAddr.AddressString)
+	}
+
+	utxos, err := getUnspentOutputs(ctx, sourceAddr.AddressString, flags.testnet, flags.debug)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
+	}
+
+	if len(utxos) == 0 {
+		return nil, nil, nil, fmt.Errorf("%w: %s", errNoUTXOsForAddress, sourceAddr.AddressString)
+	}
+
+	if flags.debug {
+		log.Printf("Found %d UTXO(s)", len(utxos))
+	}
+
+	// Select UTXOs (target amount = 0, just need fee coverage)
+	selected, err := selectUTXOs(utxos, 0, flags.feePerKb, flags.debug)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("UTXO selection failed: %w", err)
+	}
+
+	return privKey, sourceAddr, selected, nil
+}
+
+// addInputs adds the selected UTXOs as signed inputs to tx and returns the total input value.
+func addInputs(tx *transaction.Transaction, selected []*UTXO, sourceAddr *script.Address, privKey *ec.PrivateKey) (uint64, error) {
+	unlocker, err := p2pkh.Unlock(privKey, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create unlocker: %w", err)
+	}
+
+	var totalInput uint64
+
+	for _, utxo := range selected {
+		lockingScript, err := p2pkh.Lock(sourceAddr)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create locking script: %w", err)
+		}
+
+		if err := tx.AddInputFrom(utxo.TxHash, utxo.TxPos, lockingScript.String(), utxo.Value, unlocker); err != nil {
+			return 0, fmt.Errorf("failed to add input: %w", err)
+		}
+
+		totalInput += utxo.Value
+	}
+
+	return totalInput, nil
+}
+
+// addOpReturnOutputs adds the data parts to tx as a single or multi-part OP_RETURN output.
+func addOpReturnOutputs(tx *transaction.Transaction, parts [][]byte) error {
+	if len(parts) == 1 {
+		if err := tx.AddOpReturnOutput(parts[0]); err != nil {
+			return fmt.Errorf("failed to add OP_RETURN output: %w", err)
+		}
+
+		return nil
+	}
+
+	if err := tx.AddOpReturnPartsOutput(parts); err != nil {
+		return fmt.Errorf("failed to add OP_RETURN output: %w", err)
+	}
+
+	return nil
+}
+
+// addChangeOutput calculates the fee and, if the change exceeds the dust limit, adds a change
+// output back to sourceAddr. It returns the estimated fee.
+func addChangeOutput(tx *transaction.Transaction, sourceAddr *script.Address, totalInput uint64, flags opreturnFlags) (uint64, error) {
+	estimatedSize := uint64(len(tx.Inputs)*inputSize + (len(tx.Outputs)+1)*outputSize + baseTxSize)
+
+	fee := (estimatedSize * flags.feePerKb) / 1000
+	if fee < minFee {
+		fee = minFee
+	}
+
+	change := totalInput - fee
+	if change > flags.dustLimit {
+		changeLockingScript, err := p2pkh.Lock(sourceAddr)
+		if err != nil {
+			return fee, fmt.Errorf("failed to create change locking script: %w", err)
+		}
+
+		tx.AddOutput(&transaction.TransactionOutput{
+			Satoshis:      change,
+			LockingScript: changeLockingScript,
+		})
+
+		if flags.debug {
+			log.Printf("Change: %d sats", change)
+		}
+	} else if flags.debug {
+		log.Printf("Change (%d sats) below dust limit, adding to fee", change)
+	}
+
+	return fee, nil
 }
 
 func getDataParts(args []string) ([][]byte, error) {
@@ -177,6 +254,7 @@ func getDataParts(args []string) ([][]byte, error) {
 		for i, a := range args {
 			parts[i] = []byte(a)
 		}
+
 		return parts, nil
 	}
 
@@ -187,6 +265,7 @@ func getDataParts(args []string) ([][]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading stdin: %w", err)
 		}
+
 		if msg != "" {
 			return [][]byte{[]byte(msg)}, nil
 		}
@@ -220,7 +299,21 @@ type WOCUnspentAllResponse struct {
 	Error   string       `json:"error"`
 }
 
-func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
+func getUnspentOutputs(ctx context.Context, addr string, testnet, debug bool) ([]*UTXO, error) {
+	response, err := fetchUnspentResponse(ctx, addr, testnet, debug)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Error != "" {
+		return nil, fmt.Errorf("%w: %s", errAPIError, response.Error)
+	}
+
+	return filterUnspent(response.Result), nil
+}
+
+// fetchUnspentResponse calls the WhatsOnChain unspent/all endpoint for addr and decodes the response.
+func fetchUnspentResponse(ctx context.Context, addr string, testnet, debug bool) (*WOCUnspentAllResponse, error) {
 	network := "main"
 	if testnet {
 		network = "test"
@@ -232,15 +325,20 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 		log.Printf("Fetching UTXOs from WhatsOnChain (%s)...", network)
 	}
 
-	resp, err := http.Get(url) //nolint:gosec
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("WhatsOnChain API error (status %d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("%w (status %d): %s", errWhatsOnChainAPI, resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -253,35 +351,40 @@ func getUnspentOutputs(ctx context.Context, addr string) ([]*UTXO, error) {
 		return nil, fmt.Errorf("failed to parse UTXOs: %w", err)
 	}
 
-	if response.Error != "" {
-		return nil, fmt.Errorf("API error: %s", response.Error)
-	}
+	return &response, nil
+}
 
-	// Filter and deduplicate
+// filterUnspent drops mempool-spent entries and duplicates from result.
+func filterUnspent(result []WOCUnspent) []*UTXO {
 	seen := make(map[string]bool)
+
 	var utxos []*UTXO
-	for _, u := range response.Result {
-		if u.IsSpentInMempoolTx {
+
+	for _, u := range result {
+		if u.IsSpentInMempoolTx || u.TxPos < 0 {
 			continue
 		}
+
 		key := fmt.Sprintf("%s:%d", u.TxHash, u.TxPos)
 		if seen[key] {
 			continue
 		}
+
 		seen[key] = true
+
 		utxos = append(utxos, &UTXO{
 			TxHash: u.TxHash,
-			TxPos:  uint32(u.TxPos),
+			TxPos:  uint32(u.TxPos), //nolint:gosec // guarded by u.TxPos < 0 check above
 			Value:  u.Value,
 		})
 	}
 
-	return utxos, nil
+	return utxos
 }
 
-func selectUTXOs(utxos []*UTXO, targetAmount uint64, feeRate uint64) ([]*UTXO, error) {
+func selectUTXOs(utxos []*UTXO, targetAmount, feeRate uint64, debug bool) ([]*UTXO, error) {
 	if len(utxos) == 0 {
-		return nil, fmt.Errorf("no UTXOs available")
+		return nil, errNoUTXOsAvailable
 	}
 
 	sorted := make([]*UTXO, len(utxos))
@@ -291,6 +394,7 @@ func selectUTXOs(utxos []*UTXO, targetAmount uint64, feeRate uint64) ([]*UTXO, e
 	})
 
 	var selected []*UTXO
+
 	var totalValue uint64
 
 	for _, utxo := range sorted {
@@ -302,35 +406,30 @@ func selectUTXOs(utxos []*UTXO, targetAmount uint64, feeRate uint64) ([]*UTXO, e
 			if debug {
 				log.Printf("Selected %d UTXO(s) totaling %d sats", len(selected), totalValue)
 			}
+
 			return selected, nil
 		}
 	}
 
 	estimatedFee := calculateFee(len(selected), 2, feeRate)
-	return nil, fmt.Errorf("insufficient funds: have %d sats, need %d (amount: %d + fee: ~%d)",
-		totalValue, targetAmount+estimatedFee, targetAmount, estimatedFee)
+
+	return nil, fmt.Errorf("%w: have %d sats, need %d (amount: %d + fee: ~%d)",
+		errInsufficientFunds, totalValue, targetAmount+estimatedFee, targetAmount, estimatedFee)
 }
 
 func calculateFee(numInputs, numOutputs int, feeRate uint64) uint64 {
-	size := uint64(numInputs*inputSize + numOutputs*outputSize + baseTxSize)
+	size := uint64(numInputs*inputSize + numOutputs*outputSize + baseTxSize) //nolint:gosec // numInputs/numOutputs are non-negative lengths
+
 	fee := (size * feeRate) / 1000
 	if fee < minFee {
 		fee = minFee
 	}
+
 	return fee
 }
 
-func init() {
-	rootCmd.Flags().StringVarP(&wifFlag, "wif", "w", "", "WIF private key for signing (required)")
-	rootCmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Use testnet")
-	rootCmd.Flags().Uint64VarP(&feePerKb, "fee-per-kb", "f", 100, "Fee per kilobyte in satoshis")
-	rootCmd.Flags().Uint64VarP(&dustLimit, "dust", "d", 1, "Dust limit in satoshis")
-	rootCmd.Flags().BoolVar(&debug, "debug", false, "Enable debug logging")
-	rootCmd.MarkFlagRequired("wif") //nolint:errcheck
-}
-
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

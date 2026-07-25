@@ -58,6 +58,7 @@ targets:
 
 	t.Run("file not found", func(t *testing.T) {
 		t.Parallel()
+
 		_, err := LoadFromPath("/nonexistent/path/config.yaml")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read config file")
@@ -159,6 +160,7 @@ func TestGetARCConfig(t *testing.T) {
 
 	t.Run("returns mainnet config when testnet is false", func(t *testing.T) {
 		t.Parallel()
+
 		result := cfg.GetARCConfig(false)
 		assert.Equal(t, "https://mainnet.example.com", result.URL)
 		assert.Equal(t, "mainnet-key", result.APIKey)
@@ -167,6 +169,7 @@ func TestGetARCConfig(t *testing.T) {
 
 	t.Run("returns testnet config when testnet is true", func(t *testing.T) {
 		t.Parallel()
+
 		result := cfg.GetARCConfig(true)
 		assert.Equal(t, "https://testnet.example.com", result.URL)
 		assert.Equal(t, "testnet-key", result.APIKey)
@@ -175,6 +178,7 @@ func TestGetARCConfig(t *testing.T) {
 
 	t.Run("returns empty config when not set", func(t *testing.T) {
 		t.Parallel()
+
 		emptyConfig := &Config{}
 		result := emptyConfig.GetARCConfig(false)
 		assert.Empty(t, result.URL)
@@ -187,6 +191,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("valid mainnet config", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCMainnet: ARCConfig{URL: "https://api.taal.com/arc"},
 		}
@@ -196,6 +201,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("valid testnet config", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCTestnet: ARCConfig{URL: "https://arc-test.taal.com/arc"},
 		}
@@ -205,6 +211,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("missing mainnet URL", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCMainnet: ARCConfig{APIKey: "some-key"}, // URL missing
 		}
@@ -215,6 +222,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("missing testnet URL", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCTestnet: ARCConfig{APIKey: "some-key"}, // URL missing
 		}
@@ -225,6 +233,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("empty URL string", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCMainnet: ARCConfig{URL: ""},
 		}
@@ -235,6 +244,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("mainnet URL set but validating testnet", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCMainnet: ARCConfig{URL: "https://mainnet.example.com"},
 			// ARCTestnet URL not set
@@ -246,6 +256,7 @@ func TestValidate(t *testing.T) {
 
 	t.Run("both networks configured", func(t *testing.T) {
 		t.Parallel()
+
 		cfg := &Config{
 			ARCMainnet: ARCConfig{URL: "https://mainnet.example.com"},
 			ARCTestnet: ARCConfig{URL: "https://testnet.example.com"},
@@ -336,6 +347,7 @@ func TestLoad(t *testing.T) {
 	// Save current directory
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
+
 	defer func() {
 		_ = os.Chdir(originalDir)
 	}()
@@ -378,6 +390,7 @@ func TestLoadFromPathEmptyPath(t *testing.T) {
 	// Save current directory
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
+
 	defer func() {
 		_ = os.Chdir(originalDir)
 	}()

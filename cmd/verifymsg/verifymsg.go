@@ -1,7 +1,10 @@
+// Package main implements the verifymsg CLI tool, which verifies a Bitcoin
+// Signed Message signature against a BSV address.
 package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,34 +15,61 @@ import (
 )
 
 var (
-	addressFlag   string
-	signatureFlag string
-	messageFlag   string
+	errAddressAndSignatureRequired = errors.New("--address and --signature are required")
+	errNoMessageInput              = errors.New("no message provided (use --message or pipe via stdin)")
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "verifymsg",
-	Short: "Verify a Bitcoin Signed Message",
-	Long:  "A command line tool that verifies a Bitcoin Signed Message signature against an address. Exits 0 if valid, 1 if invalid",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return run(cmd)
-	},
-}
+func newRootCmd() *cobra.Command {
+	var (
+		addressFlag   string
+		signatureFlag string
+		messageFlag   string
+	)
 
-func run(cmd *cobra.Command) error {
-	if addressFlag == "" || signatureFlag == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("--address and --signature are required")
+	cmd := &cobra.Command{
+		Use:   "verifymsg",
+		Short: "Verify a Bitcoin Signed Message",
+		Long:  "A command line tool that verifies a Bitcoin Signed Message signature against an address. Exits 0 if valid, 1 if invalid",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return run(cmd, addressFlag, signatureFlag, messageFlag)
+		},
 	}
 
-	message, err := getMessage(cmd)
+	cmd.Flags().StringVarP(&addressFlag, "address", "a", "", "BSV address to verify against (required)")
+	cmd.Flags().StringVarP(&signatureFlag, "signature", "s", "", "Base64-encoded signature (required)")
+	cmd.Flags().StringVarP(&messageFlag, "message", "m", "", "Message to verify")
+
+	if err := cmd.MarkFlagRequired("address"); err != nil {
+		panic(err)
+	}
+
+	if err := cmd.MarkFlagRequired("signature"); err != nil {
+		panic(err)
+	}
+
+	return cmd
+}
+
+func run(cmd *cobra.Command, addressFlag, signatureFlag, messageFlag string) error {
+	if addressFlag == "" || signatureFlag == "" {
+		if err := cmd.Help(); err != nil {
+			return err
+		}
+
+		return errAddressAndSignatureRequired
+	}
+
+	message, err := getMessage(messageFlag)
 	if err != nil {
 		return err
 	}
 
 	if message == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("no message provided (use --message or pipe via stdin)")
+		if helpErr := cmd.Help(); helpErr != nil {
+			return helpErr
+		}
+
+		return errNoMessageInput
 	}
 
 	sigBytes, err := base64.StdEncoding.DecodeString(signatureFlag)
@@ -49,15 +79,17 @@ func run(cmd *cobra.Command) error {
 
 	err = bsm.VerifyMessage(addressFlag, sigBytes, []byte(message))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Invalid: %v\n", err)
+
 		os.Exit(1)
 	}
 
-	fmt.Println("Valid")
+	_, _ = fmt.Fprintln(os.Stdout, "Valid")
+
 	return nil
 }
 
-func getMessage(cmd *cobra.Command) (string, error) {
+func getMessage(messageFlag string) (string, error) {
 	if messageFlag != "" {
 		return messageFlag, nil
 	}
@@ -70,17 +102,10 @@ func getMessage(cmd *cobra.Command) (string, error) {
 	return "", nil
 }
 
-func init() {
-	rootCmd.Flags().StringVarP(&addressFlag, "address", "a", "", "BSV address to verify against (required)")
-	rootCmd.Flags().StringVarP(&signatureFlag, "signature", "s", "", "Base64-encoded signature (required)")
-	rootCmd.Flags().StringVarP(&messageFlag, "message", "m", "", "Message to verify")
-	rootCmd.MarkFlagRequired("address")   //nolint:errcheck
-	rootCmd.MarkFlagRequired("signature") //nolint:errcheck
-}
-
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := newRootCmd().Execute(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 		os.Exit(1)
 	}
 }

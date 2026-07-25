@@ -5,12 +5,15 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
+
+var errARCURLRequired = errors.New("ARC URL is required")
 
 // ARCConfig holds the configuration for an ARC endpoint (mainnet or testnet).
 type ARCConfig struct {
@@ -61,6 +64,7 @@ func LoadFromPath(path string) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get executable path: %w", err)
 		}
+
 		exeDir := filepath.Dir(exePath)
 
 		// Try config.yaml in the executable directory first
@@ -90,6 +94,7 @@ func (c *Config) GetARCConfig(testnet bool) ARCConfig {
 	if testnet {
 		return c.ARCTestnet
 	}
+
 	return c.ARCMainnet
 }
 
@@ -102,7 +107,9 @@ func (c *Config) Validate(testnet bool) error {
 		if testnet {
 			network = "testnet"
 		}
-		return fmt.Errorf("ARC URL is required for %s in config.yaml", network)
+
+		return fmt.Errorf("%w for %s in config.yaml", errARCURLRequired, network)
 	}
+
 	return nil
 }

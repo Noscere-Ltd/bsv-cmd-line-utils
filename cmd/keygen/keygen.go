@@ -24,6 +24,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -38,13 +39,7 @@ const (
 	testnetWIFPrefix = 0xef
 )
 
-// Command-line flags
-var (
-	testnet      bool // Use testnet instead of mainnet
-	uncompressed bool // Generate uncompressed keys
-	count        int  // Number of key pairs to generate
-	jsonOutput   bool // Output in JSON format
-)
+var errInvalidCount = errors.New("count must be between 1 and 100")
 
 // KeyPair holds the generated key information.
 type KeyPair struct {
@@ -56,32 +51,49 @@ type KeyPair struct {
 	Compressed bool   `json:"compressed"` // Whether the key is compressed
 }
 
-// rootCmd is the main cobra command for the keygen tool.
-var rootCmd = &cobra.Command{
-	Use:   "keygen",
-	Short: "Generate BSV key pairs",
-	Long: `A command line tool that generates Bitcoin SV private keys with their
+// newRootCmd builds the cobra command for the keygen tool.
+func newRootCmd() *cobra.Command {
+	var (
+		testnet      bool // Use testnet instead of mainnet
+		uncompressed bool // Generate uncompressed keys
+		count        int  // Number of key pairs to generate
+		jsonOutput   bool // Output in JSON format
+	)
+
+	cmd := &cobra.Command{
+		Use:   "keygen",
+		Short: "Generate BSV key pairs",
+		Long: `A command line tool that generates Bitcoin SV private keys with their
 corresponding public keys and addresses. Keys are generated using
 cryptographically secure random number generation.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return run()
-	},
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return run(testnet, uncompressed, count, jsonOutput)
+		},
+	}
+
+	cmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Generate testnet keys (default: mainnet)")
+	cmd.Flags().BoolVarP(&uncompressed, "uncompressed", "u", false, "Generate uncompressed keys (default: compressed)")
+	cmd.Flags().IntVarP(&count, "count", "c", 1, "Number of key pairs to generate (1-100)")
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+
+	return cmd
 }
 
 // run handles the main execution flow.
-func run() error {
+func run(testnet, uncompressed bool, count int, jsonOutput bool) error {
 	// Validate count
 	if count < 1 || count > 100 {
-		return fmt.Errorf("count must be between 1 and 100")
+		return errInvalidCount
 	}
 
 	// Generate key pairs
 	keyPairs := make([]KeyPair, 0, count)
 	for i := 0; i < count; i++ {
-		kp, err := generateKeyPair()
+		kp, err := generateKeyPair(testnet, uncompressed)
 		if err != nil {
 			return fmt.Errorf("generating key pair: %w", err)
 		}
+
 		keyPairs = append(keyPairs, kp)
 	}
 
@@ -89,11 +101,12 @@ func run() error {
 	if jsonOutput {
 		return outputJSON(keyPairs)
 	}
-	return outputText(keyPairs)
+
+	return outputText(keyPairs, count)
 }
 
 // generateKeyPair creates a new BSV key pair.
-func generateKeyPair() (KeyPair, error) {
+func generateKeyPair(testnet, uncompressed bool) (KeyPair, error) {
 	// Generate new private key
 	privKey, err := ec.NewPrivateKey()
 	if err != nil {
@@ -127,6 +140,7 @@ func generateKeyPair() (KeyPair, error) {
 
 	// Generate address
 	mainnet := !testnet
+
 	address, err := script.NewAddressFromPublicKeyWithCompression(pubKey, mainnet, !uncompressed)
 	if err != nil {
 		return KeyPair{}, fmt.Errorf("creating address: %w", err)
@@ -165,45 +179,55 @@ func generateUncompressedWIF(privKeyBytes []byte, prefix byte) string {
 func outputJSON(keyPairs []KeyPair) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
+
 	return encoder.Encode(keyPairs) //nolint:gosec // G117: intentionally marshaling private keys in key generator
 }
 
 // outputText prints key pairs in human-readable format.
-func outputText(keyPairs []KeyPair) error {
-	fmt.Fprint(os.Stdout, "\n=== BSV Key Generator ===\n\n")
+func outputText(keyPairs []KeyPair, count int) error {
+	if _, err := fmt.Fprint(os.Stdout, "\n=== BSV Key Generator ===\n\n"); err != nil {
+		return err
+	}
 
 	for i, kp := range keyPairs {
-		if count > 1 {
-			fmt.Fprintf(os.Stdout, "Key #%d:\n", i+1)
-		}
-		fmt.Fprintf(os.Stdout, "Network: %s\n", kp.Network)
-		fmt.Fprintf(os.Stdout, "Private Key (hex): %s\n", kp.PrivateKey)
-		fmt.Fprintf(os.Stdout, "Public Key (hex): %s\n", kp.PublicKey)
-		fmt.Fprintf(os.Stdout, "WIF: %s\n", kp.WIF)
-		fmt.Fprintf(os.Stdout, "Address: %s\n", kp.Address)
-		fmt.Fprintf(os.Stdout, "Compressed: %t\n", kp.Compressed)
-
-		if i < len(keyPairs)-1 {
-			fmt.Fprintln(os.Stdout, "---")
+		if err := printKeyPair(kp, i, count, i < len(keyPairs)-1); err != nil {
+			return err
 		}
 	}
 
-	fmt.Fprintln(os.Stdout, "\nKeep your private keys secure!")
-	return nil
+	_, err := fmt.Fprintln(os.Stdout, "\nKeep your private keys secure!")
+
+	return err
 }
 
-// init initializes the cobra command flags.
-func init() {
-	rootCmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Generate testnet keys (default: mainnet)")
-	rootCmd.Flags().BoolVarP(&uncompressed, "uncompressed", "u", false, "Generate uncompressed keys (default: compressed)")
-	rootCmd.Flags().IntVarP(&count, "count", "c", 1, "Number of key pairs to generate (1-100)")
-	rootCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+// printKeyPair prints a single key pair, optionally preceded by an index header
+// and followed by a separator line.
+func printKeyPair(kp KeyPair, index, count int, printSeparator bool) error {
+	if count > 1 {
+		if _, err := fmt.Fprintf(os.Stdout, "Key #%d:\n", index+1); err != nil {
+			return err
+		}
+	}
+
+	if _, err := fmt.Fprintf(os.Stdout, "Network: %s\nPrivate Key (hex): %s\nPublic Key (hex): %s\nWIF: %s\nAddress: %s\nCompressed: %t\n",
+		kp.Network, kp.PrivateKey, kp.PublicKey, kp.WIF, kp.Address, kp.Compressed); err != nil {
+		return err
+	}
+
+	if printSeparator {
+		if _, err := fmt.Fprintln(os.Stdout, "---"); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // main is the entry point for the keygen command.
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 		os.Exit(1)
 	}
 }

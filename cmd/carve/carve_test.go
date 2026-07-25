@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testTxHash1 = "tx1"
+
 func TestCalculateFee(t *testing.T) {
 	t.Parallel()
 
@@ -90,6 +92,7 @@ func TestCalculateFee(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := calculateFee(tt.numInputs, tt.numOutputs, tt.feePerKb)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -103,26 +106,26 @@ func TestSelectUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 10000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 10000},
 		}
 
-		selected, err := selectUTXOs(utxos, 5000, 100)
+		selected, err := selectUTXOs(utxos, 5000, 100, false)
 		require.NoError(t, err)
 		require.Len(t, selected, 1)
-		assert.Equal(t, "tx1", selected[0].TxHash)
+		assert.Equal(t, testTxHash1, selected[0].TxHash)
 	})
 
 	t.Run("multiple UTXOs needed", func(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
 			{TxHash: "tx2", TxPos: 0, Value: 2000},
 			{TxHash: "tx3", TxPos: 0, Value: 3000},
 		}
 
 		// Target 4000 + fee, needs at least 2 UTXOs
-		selected, err := selectUTXOs(utxos, 4000, 100)
+		selected, err := selectUTXOs(utxos, 4000, 100, false)
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, len(selected), 2)
 
@@ -131,6 +134,7 @@ func TestSelectUTXOs(t *testing.T) {
 		for _, u := range selected {
 			totalValue += u.Value
 		}
+
 		assert.GreaterOrEqual(t, totalValue, uint64(4000))
 	})
 
@@ -144,7 +148,7 @@ func TestSelectUTXOs(t *testing.T) {
 			{TxHash: "medium", TxPos: 0, Value: 5000},
 		}
 
-		selected, err := selectUTXOs(utxos, 1000, 100)
+		selected, err := selectUTXOs(utxos, 1000, 100, false)
 		require.NoError(t, err)
 		require.Len(t, selected, 1)
 		assert.Equal(t, "large", selected[0].TxHash)
@@ -154,12 +158,12 @@ func TestSelectUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
 			{TxHash: "tx2", TxPos: 0, Value: 2000},
 		}
 
 		// Target much more than available
-		_, err := selectUTXOs(utxos, 100000, 100)
+		_, err := selectUTXOs(utxos, 100000, 100, false)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "insufficient funds")
 	})
@@ -169,7 +173,7 @@ func TestSelectUTXOs(t *testing.T) {
 
 		utxos := []*UTXO{}
 
-		_, err := selectUTXOs(utxos, 1000, 100)
+		_, err := selectUTXOs(utxos, 1000, 100, false)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no UTXOs available")
 	})
@@ -178,10 +182,10 @@ func TestSelectUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 5100}, // Just enough for 5000 + ~100 fee
+			{TxHash: testTxHash1, TxPos: 0, Value: 5100}, // Just enough for 5000 + ~100 fee
 		}
 
-		selected, err := selectUTXOs(utxos, 5000, 100)
+		selected, err := selectUTXOs(utxos, 5000, 100, false)
 		require.NoError(t, err)
 		require.Len(t, selected, 1)
 	})
@@ -199,7 +203,7 @@ func TestSelectUTXOs(t *testing.T) {
 		originalCopy := make([]*UTXO, len(original))
 		copy(originalCopy, original)
 
-		_, _ = selectUTXOs(original, 50, 100)
+		_, _ = selectUTXOs(original, 50, 100, false)
 
 		// Original should be unchanged
 		for i, u := range original {
@@ -217,7 +221,7 @@ func TestSelectUTXOs(t *testing.T) {
 		}
 
 		// Target that requires multiple UTXOs
-		selected, err := selectUTXOs(utxos, 15000, 1000)
+		selected, err := selectUTXOs(utxos, 15000, 1000, false)
 		require.NoError(t, err)
 
 		var totalValue uint64
@@ -345,12 +349,12 @@ func TestFilterAndDeduplicateUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
 			{TxHash: "tx2", TxPos: 0, Value: 2000},
 			{TxHash: "tx3", TxPos: 0, Value: 3000},
 		}
 
-		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr")
+		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 		require.NoError(t, err)
 		assert.Len(t, result, 3)
 	})
@@ -359,13 +363,13 @@ func TestFilterAndDeduplicateUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
-			{TxHash: "tx1", TxPos: 0, Value: 1000}, // Duplicate
-			{TxHash: "tx1", TxPos: 1, Value: 2000}, // Different vout, not duplicate
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000}, // Duplicate
+			{TxHash: testTxHash1, TxPos: 1, Value: 2000}, // Different vout, not duplicate
 			{TxHash: "tx2", TxPos: 0, Value: 3000},
 		}
 
-		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr")
+		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 		require.NoError(t, err)
 		assert.Len(t, result, 3)
 	})
@@ -379,7 +383,7 @@ func TestFilterAndDeduplicateUTXOs(t *testing.T) {
 			{TxHash: "first", TxPos: 0, Value: 1000}, // Duplicate
 		}
 
-		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr")
+		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 		require.NoError(t, err)
 		require.Len(t, result, 2)
 		assert.Equal(t, "first", result[0].TxHash)
@@ -391,7 +395,7 @@ func TestFilterAndDeduplicateUTXOs(t *testing.T) {
 
 		utxos := []*UTXO{}
 
-		_, err := filterAndDeduplicateUTXOs(utxos, "testaddr")
+		_, err := filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no UTXOs found")
 	})
@@ -400,10 +404,10 @@ func TestFilterAndDeduplicateUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
 		}
 
-		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr")
+		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 		require.NoError(t, err)
 		assert.Len(t, result, 1)
 	})
@@ -412,12 +416,12 @@ func TestFilterAndDeduplicateUTXOs(t *testing.T) {
 		t.Parallel()
 
 		utxos := []*UTXO{
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
-			{TxHash: "tx1", TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
+			{TxHash: testTxHash1, TxPos: 0, Value: 1000},
 		}
 
-		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr")
+		result, err := filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 		require.NoError(t, err)
 		assert.Len(t, result, 1)
 	})
@@ -462,8 +466,9 @@ func BenchmarkSelectUTXOs(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		_, _ = selectUTXOs(utxos, 50000, 1000)
+		_, _ = selectUTXOs(utxos, 50000, 1000, false)
 	}
 }
 
@@ -480,6 +485,7 @@ func BenchmarkParseUTXOResponse(b *testing.B) {
 	}`)
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, _ = parseUTXOResponse(jsonResponse)
 	}
@@ -492,7 +498,8 @@ func BenchmarkFilterAndDeduplicateUTXOs(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		_, _ = filterAndDeduplicateUTXOs(utxos, "testaddr")
+		_, _ = filterAndDeduplicateUTXOs(utxos, "testaddr", false)
 	}
 }

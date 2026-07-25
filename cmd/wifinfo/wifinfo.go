@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -35,6 +36,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
+)
+
+var (
+	errNoWIFProvided        = errors.New("no WIF provided")
+	errInvalidCompressFlag  = errors.New("invalid compression flag")
+	errInvalidWIFLength     = errors.New("invalid WIF length")
+	errUnknownNetworkPrefix = errors.New("unknown network prefix")
+	errInvalidWIFChecksum   = errors.New("invalid WIF checksum")
 )
 
 // Network prefix bytes for WIF encoding
@@ -53,13 +62,13 @@ const (
 	colorDim   = "\033[2m"
 )
 
-// Command-line flags
-var (
+// flags holds the command-line flags for the wifinfo tool.
+type flags struct {
 	wif         string // WIF string provided via flag
 	jsonFlag    bool   // Output in JSON format
 	showUncompr bool   // Include uncompressed keys, WIFs, and addresses
 	noColor     bool   // Disable colored output
-)
+}
 
 // wifInput holds the parsed properties of the input WIF.
 type wifInput struct {
@@ -94,50 +103,62 @@ type wifInfoResult struct {
 	Testnet   networkInfo   `json:"testnet"`
 }
 
-// rootCmd is the main cobra command for the wifinfo tool.
-var rootCmd = &cobra.Command{
-	Use:   "wifinfo [wif]",
-	Short: "Display mainnet and testnet details for a BSV private key in WIF format",
-	Long:  "A command line tool that parses a WIF-encoded BSV private key and displays public keys, addresses, and WIF representations for both mainnet and testnet",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return run(cmd, args)
-	},
+// newRootCmd builds the cobra command for the wifinfo tool.
+func newRootCmd() *cobra.Command {
+	f := &flags{}
+
+	cmd := &cobra.Command{
+		Use:   "wifinfo [wif]",
+		Short: "Display mainnet and testnet details for a BSV private key in WIF format",
+		Long:  "A command line tool that parses a WIF-encoded BSV private key and displays public keys, addresses, and WIF representations for both mainnet and testnet",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd, args, f)
+		},
+	}
+
+	cmd.Flags().StringVarP(&f.wif, "wif", "w", "", "WIF private key to analyze")
+	cmd.Flags().BoolVarP(&f.jsonFlag, "json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolVarP(&f.showUncompr, "uncompressed", "u", false, "Include uncompressed keys, WIFs, and addresses")
+	cmd.Flags().BoolVar(&f.noColor, "no-color", false, "Disable colored output")
+
+	return cmd
 }
 
 // run handles the main execution flow.
-func run(cmd *cobra.Command, args []string) error {
-	wifString, err := getWIF(cmd, args)
+func run(cmd *cobra.Command, args []string, f *flags) error {
+	wifString, err := getWIF(cmd, args, f)
 	if err != nil {
 		return err
 	}
 
 	if wifString == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("no WIF provided")
+		_ = cmd.Help()
+		return errNoWIFProvided
 	}
 
-	result, err := getWIFInfo(wifString)
+	result, err := getWIFInfo(wifString, f.showUncompr)
 	if err != nil {
 		return err
 	}
 
-	if jsonFlag {
+	if f.jsonFlag {
 		return printJSON(result)
 	}
 
-	printHuman(result)
+	printHuman(result, f.showUncompr, f.noColor)
+
 	return nil
 }
 
 // getWIF retrieves the WIF string from argument, flag, or stdin.
-func getWIF(cmd *cobra.Command, args []string) (string, error) {
+func getWIF(_ *cobra.Command, args []string, f *flags) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
 
-	if wif != "" {
-		return wif, nil
+	if f.wif != "" {
+		return f.wif, nil
 	}
 
 	stat, _ := os.Stdin.Stat()
@@ -163,13 +184,14 @@ func parseWIF(wifString string) (privKeyBytes []byte, isTestnet bool, isCompress
 	switch decodedLen {
 	case 1 + privateKeyLen + 1 + 4:
 		if decoded[33] != compressMagic {
-			return nil, false, false, fmt.Errorf("invalid compression flag: 0x%02x", decoded[33])
+			return nil, false, false, fmt.Errorf("%w: 0x%02x", errInvalidCompressFlag, decoded[33])
 		}
+
 		isCompressed = true
 	case 1 + privateKeyLen + 4:
 		isCompressed = false
 	default:
-		return nil, false, false, fmt.Errorf("invalid WIF length: %d bytes", decodedLen)
+		return nil, false, false, fmt.Errorf("%w: %d bytes", errInvalidWIFLength, decodedLen)
 	}
 
 	// Detect network
@@ -179,7 +201,7 @@ func parseWIF(wifString string) (privKeyBytes []byte, isTestnet bool, isCompress
 	case testnetWIFPrefix:
 		isTestnet = true
 	default:
-		return nil, false, false, fmt.Errorf("unknown network prefix: 0x%02x", decoded[0])
+		return nil, false, false, fmt.Errorf("%w: 0x%02x", errUnknownNetworkPrefix, decoded[0])
 	}
 
 	// Validate checksum
@@ -189,13 +211,16 @@ func parseWIF(wifString string) (privKeyBytes []byte, isTestnet bool, isCompress
 	} else {
 		payload = decoded[:1+privateKeyLen]
 	}
+
 	expectedChecksum := crypto.Sha256d(payload)[:4]
+
 	actualChecksum := decoded[decodedLen-4:]
 	if !bytes.Equal(expectedChecksum, actualChecksum) {
-		return nil, false, false, fmt.Errorf("invalid WIF checksum")
+		return nil, false, false, errInvalidWIFChecksum
 	}
 
 	privKeyBytes = decoded[1 : 1+privateKeyLen]
+
 	return privKeyBytes, isTestnet, isCompressed, nil
 }
 
@@ -213,6 +238,7 @@ func encodeWIF(privKeyBytes []byte, isTestnet bool, isCompressed bool) string {
 
 	buf := make([]byte, 0, size)
 	buf = append(buf, prefix)
+
 	buf = append(buf, privKeyBytes...)
 	if isCompressed {
 		buf = append(buf, compressMagic)
@@ -220,11 +246,12 @@ func encodeWIF(privKeyBytes []byte, isTestnet bool, isCompressed bool) string {
 
 	checksum := crypto.Sha256d(buf)[:4]
 	buf = append(buf, checksum...)
+
 	return base58.Encode(buf)
 }
 
 // getWIFInfo parses a WIF string and returns all derived information.
-func getWIFInfo(wifString string) (*wifInfoResult, error) {
+func getWIFInfo(wifString string, showUncompr bool) (*wifInfoResult, error) {
 	privKeyBytes, isTestnet, isCompressed, err := parseWIF(wifString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse WIF: %w", err)
@@ -243,6 +270,7 @@ func getWIFInfo(wifString string) (*wifInfoResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generating mainnet compressed address: %w", err)
 	}
+
 	testnetAddrCompressed, err := script.NewAddressFromPublicKeyWithCompression(pubKey, false, true)
 	if err != nil {
 		return nil, fmt.Errorf("generating testnet compressed address: %w", err)
@@ -276,10 +304,12 @@ func getWIFInfo(wifString string) (*wifInfoResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("generating mainnet uncompressed address: %w", err)
 		}
+
 		testnetAddrUncompressed, err := script.NewAddressFromPublicKeyWithCompression(pubKey, false, false)
 		if err != nil {
 			return nil, fmt.Errorf("generating testnet uncompressed address: %w", err)
 		}
+
 		result.Mainnet.Address.Uncompressed = mainnetAddrUncompressed.AddressString
 		result.Testnet.Address.Uncompressed = testnetAddrUncompressed.AddressString
 	}
@@ -291,65 +321,66 @@ func getWIFInfo(wifString string) (*wifInfoResult, error) {
 func printJSON(result *wifInfoResult) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
+
 	return enc.Encode(result)
 }
 
 // c applies ANSI color codes to text if color output is enabled.
-func c(color, text string) string {
+func c(noColor bool, color, text string) string {
 	if noColor {
 		return text
 	}
+
 	return color + text + colorReset
 }
 
 // printHuman outputs the result in human-readable format.
-func printHuman(result *wifInfoResult) {
+func printHuman(result *wifInfoResult, showUncompr, noColor bool) {
 	line := "────────────────────────────────────────────────────────────────────────"
 
-	fmt.Println(c(colorWhite, line))
-	fmt.Printf("%s %s\n", c(colorDim, "Input WIF:"), c(colorGreen, result.Input.WIF))
-	fmt.Printf("%s  %s\n", c(colorDim, "Network:"), c(colorGreen, result.Input.Network))
+	w := os.Stdout
+	fmt.Fprintln(w, c(noColor, colorWhite, line))                                                              //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "%s %s\n", c(noColor, colorDim, "Input WIF:"), c(noColor, colorGreen, result.Input.WIF))    //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "%s  %s\n", c(noColor, colorDim, "Network:"), c(noColor, colorGreen, result.Input.Network)) //nolint:errcheck // terminal output, not worth failing on
+
 	compressed := "yes"
 	if !result.Input.Compressed {
 		compressed = "no"
 	}
-	fmt.Printf("%s %s\n", c(colorDim, "Compressed:"), c(colorGreen, compressed))
 
-	fmt.Printf("\n%s\n", c(colorDim, "Public Key:"))
-	fmt.Printf("  %s %s\n", c(colorDim, "Compressed:"), c(colorGreen, result.PublicKey.Compressed))
+	fmt.Fprintf(w, "%s %s\n", c(noColor, colorDim, "Compressed:"), c(noColor, colorGreen, compressed)) //nolint:errcheck // terminal output, not worth failing on
+
+	fmt.Fprintf(w, "\n%s\n", c(noColor, colorDim, "Public Key:"))                                                         //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "Compressed:"), c(noColor, colorGreen, result.PublicKey.Compressed)) //nolint:errcheck // terminal output, not worth failing on
+
 	if result.PublicKey.Uncompressed != "" {
-		fmt.Printf("  %s %s\n", c(colorDim, "Uncompressed:"), c(colorGreen, result.PublicKey.Uncompressed))
+		fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "Uncompressed:"), c(noColor, colorGreen, result.PublicKey.Uncompressed)) //nolint:errcheck // terminal output, not worth failing on
 	}
 
-	fmt.Printf("\n%s\n", c(colorWhite, "MAINNET"))
-	fmt.Printf("  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Mainnet.WIF.Compressed))
-	fmt.Printf("  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Mainnet.Address.Compressed))
+	fmt.Fprintf(w, "\n%s\n", c(noColor, colorWhite, "MAINNET"))                                                              //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "WIF:"), c(noColor, colorGreen, result.Mainnet.WIF.Compressed))         //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "Address:"), c(noColor, colorGreen, result.Mainnet.Address.Compressed)) //nolint:errcheck // terminal output, not worth failing on
+
 	if showUncompr {
-		fmt.Printf("  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Mainnet.WIF.Uncompressed))
-		fmt.Printf("  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Mainnet.Address.Uncompressed))
+		fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "WIF (uncompressed):"), c(noColor, colorGreen, result.Mainnet.WIF.Uncompressed))         //nolint:errcheck // terminal output, not worth failing on
+		fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "Address (uncompressed):"), c(noColor, colorGreen, result.Mainnet.Address.Uncompressed)) //nolint:errcheck // terminal output, not worth failing on
 	}
 
-	fmt.Printf("\n%s\n", c(colorWhite, "TESTNET"))
-	fmt.Printf("  %s %s\n", c(colorDim, "WIF:"), c(colorGreen, result.Testnet.WIF.Compressed))
-	fmt.Printf("  %s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Testnet.Address.Compressed))
+	fmt.Fprintf(w, "\n%s\n", c(noColor, colorWhite, "TESTNET"))                                                              //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "WIF:"), c(noColor, colorGreen, result.Testnet.WIF.Compressed))         //nolint:errcheck // terminal output, not worth failing on
+	fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "Address:"), c(noColor, colorGreen, result.Testnet.Address.Compressed)) //nolint:errcheck // terminal output, not worth failing on
+
 	if showUncompr {
-		fmt.Printf("  %s %s\n", c(colorDim, "WIF (uncompressed):"), c(colorGreen, result.Testnet.WIF.Uncompressed))
-		fmt.Printf("  %s %s\n", c(colorDim, "Address (uncompressed):"), c(colorGreen, result.Testnet.Address.Uncompressed))
+		fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "WIF (uncompressed):"), c(noColor, colorGreen, result.Testnet.WIF.Uncompressed))         //nolint:errcheck // terminal output, not worth failing on
+		fmt.Fprintf(w, "  %s %s\n", c(noColor, colorDim, "Address (uncompressed):"), c(noColor, colorGreen, result.Testnet.Address.Uncompressed)) //nolint:errcheck // terminal output, not worth failing on
 	}
-	fmt.Println(c(colorWhite, line))
-}
 
-// init initializes the cobra command flags.
-func init() {
-	rootCmd.Flags().StringVarP(&wif, "wif", "w", "", "WIF private key to analyze")
-	rootCmd.Flags().BoolVarP(&jsonFlag, "json", "j", false, "Output in JSON format")
-	rootCmd.Flags().BoolVarP(&showUncompr, "uncompressed", "u", false, "Include uncompressed keys, WIFs, and addresses")
-	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+	fmt.Fprintln(w, c(noColor, colorWhite, line)) //nolint:errcheck // terminal output, not worth failing on
 }
 
 // main is the entry point for the wifinfo command.
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

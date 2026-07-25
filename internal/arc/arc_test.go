@@ -15,6 +15,7 @@ func TestNewARCClient(t *testing.T) {
 
 	t.Run("creates client with URL and API key", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewARCClient("https://api.taal.com/arc", "test-api-key")
 		require.NotNil(t, client)
 		assert.Equal(t, "https://api.taal.com/arc", client.baseURL)
@@ -24,18 +25,21 @@ func TestNewARCClient(t *testing.T) {
 
 	t.Run("trims trailing slash from URL", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewARCClient("https://api.taal.com/arc/", "key")
 		assert.Equal(t, "https://api.taal.com/arc", client.baseURL)
 	})
 
 	t.Run("handles empty API key", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewARCClient("https://api.taal.com/arc", "")
 		assert.Empty(t, client.apiKey)
 	})
 
 	t.Run("handles multiple trailing slashes", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewARCClient("https://api.taal.com/arc///", "key")
 		// TrimSuffix only removes one slash
 		assert.Equal(t, "https://api.taal.com/arc//", client.baseURL)
@@ -67,6 +71,7 @@ func TestBroadcastTransaction(t *testing.T) {
 				t.Errorf("failed to decode request: %v", err)
 				return
 			}
+
 			assert.Equal(t, "0100000001...", req.RawTx)
 
 			w.WriteHeader(http.StatusCreated)
@@ -92,7 +97,7 @@ func TestBroadcastTransaction(t *testing.T) {
 			TxStatus: StatusStored,
 		}
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(response)
 		}))
@@ -131,7 +136,7 @@ func TestBroadcastTransaction(t *testing.T) {
 			Error:  "Transaction already exists",
 		}
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(errorResp)
 		}))
@@ -150,7 +155,7 @@ func TestBroadcastTransaction(t *testing.T) {
 	t.Run("handles error response without message", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte("{}"))
 		}))
@@ -178,7 +183,7 @@ func TestBroadcastTransaction(t *testing.T) {
 	t.Run("handles invalid JSON response", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte("not json"))
 		}))
@@ -238,7 +243,7 @@ func TestGetTransactionStatus(t *testing.T) {
 			Error:  "Transaction not found",
 		}
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			_ = json.NewEncoder(w).Encode(errorResp)
 		}))
@@ -309,6 +314,7 @@ func TestIsTransactionFinal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := IsTransactionFinal(tt.status)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -338,6 +344,7 @@ func TestGetStatusColor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := GetStatusColor(tt.status)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -367,6 +374,7 @@ func TestGetStatusDescription(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := GetStatusDescription(tt.status)
 			assert.Contains(t, result, tt.contains)
 		})
@@ -396,6 +404,7 @@ func TestTransactionRequestStruct(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded map[string]string
+
 	err = json.Unmarshal(data, &decoded)
 	require.NoError(t, err)
 
@@ -413,6 +422,7 @@ func TestTransactionResponseStruct(t *testing.T) {
 	}`
 
 	var resp TransactionResponse
+
 	err := json.Unmarshal([]byte(jsonData), &resp)
 	require.NoError(t, err)
 
@@ -435,6 +445,7 @@ func TestTransactionStatusStruct(t *testing.T) {
 	}`
 
 	var status TransactionStatus
+
 	err := json.Unmarshal([]byte(jsonData), &status)
 	require.NoError(t, err)
 
@@ -454,6 +465,7 @@ func TestErrorResponseStruct(t *testing.T) {
 	}`
 
 	var errResp ErrorResponse
+
 	err := json.Unmarshal([]byte(jsonData), &errResp)
 	require.NoError(t, err)
 

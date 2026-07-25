@@ -1,8 +1,10 @@
+// Package main implements the balance CLI tool for checking a BSV address's balance.
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -20,12 +22,7 @@ const (
 	colorDim   = "\033[2m"
 )
 
-var (
-	testnet  bool
-	jsonFlag bool
-	utxos    bool
-	noColor  bool
-)
+var errNoAddressOrWIF = errors.New("no address or WIF provided")
 
 type balanceResult struct {
 	Address     string       `json:"address"`
@@ -43,41 +40,52 @@ type utxoRecord struct {
 	Height int64  `json:"height"`
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "balance [address_or_wif]",
-	Short: "Check the balance of a BSV address",
-	Long:  "A command line tool that checks the balance of a BSV address via WhatsOnChain. Accepts an address or WIF as input",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return run(cmd, args)
-	},
+func newRootCmd() *cobra.Command {
+	var (
+		testnet  bool
+		jsonFlag bool
+		utxos    bool
+		noColor  bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "balance [address_or_wif]",
+		Short: "Check the balance of a BSV address",
+		Long:  "A command line tool that checks the balance of a BSV address via WhatsOnChain. Accepts an address or WIF as input",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd, args, testnet, jsonFlag, utxos, noColor)
+		},
+	}
+
+	cmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Use testnet")
+	cmd.Flags().BoolVarP(&jsonFlag, "json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolVarP(&utxos, "utxos", "u", false, "Show individual UTXOs")
+	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+
+	return cmd
 }
 
-func run(cmd *cobra.Command, args []string) error {
+func run(cmd *cobra.Command, args []string, testnet, jsonFlag, utxos, noColor bool) error {
 	input, err := getInput(cmd, args)
 	if err != nil {
 		return err
 	}
 
 	if input == "" {
-		cmd.Help() //nolint:errcheck
-		return fmt.Errorf("no address or WIF provided")
+		cmd.Help() //nolint:errcheck,gosec // help output error is not actionable here
+		return errNoAddressOrWIF
 	}
 
 	// Auto-detect: try WIF first, fall back to address
-	addr, err := resolveAddress(input)
+	addr, err := resolveAddress(input, testnet)
 	if err != nil {
 		return err
 	}
 
 	ctx := context.Background()
 
-	var client whatsonchain.ClientInterface
-	if testnet {
-		client, err = whatsonchain.NewClient(ctx, whatsonchain.WithNetwork(whatsonchain.NetworkTest))
-	} else {
-		client, err = whatsonchain.NewClient(ctx, whatsonchain.WithNetwork(whatsonchain.NetworkMain))
-	}
+	client, err := newWhatsOnChainClient(ctx, testnet)
 	if err != nil {
 		return fmt.Errorf("creating WhatsOnChain client: %w", err)
 	}
@@ -97,31 +105,50 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if utxos {
-		history, err := client.AddressUnspentTransactions(ctx, addr)
-		if err != nil {
-			return fmt.Errorf("fetching UTXOs: %w", err)
-		}
-		for _, h := range history {
-			result.UTXOs = append(result.UTXOs, utxoRecord{
-				TxHash: h.TxHash,
-				TxPos:  h.TxPos,
-				Value:  h.Value,
-				Height: h.Height,
-			})
+		if err := attachUTXOs(ctx, client, addr, &result); err != nil {
+			return err
 		}
 	}
 
 	if jsonFlag {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(result)
 	}
 
-	printHuman(&result)
+	printHuman(&result, noColor)
+
 	return nil
 }
 
-func getInput(cmd *cobra.Command, args []string) (string, error) {
+func newWhatsOnChainClient(ctx context.Context, testnet bool) (whatsonchain.ClientInterface, error) {
+	if testnet {
+		return whatsonchain.NewClient(ctx, whatsonchain.WithNetwork(whatsonchain.NetworkTest))
+	}
+
+	return whatsonchain.NewClient(ctx, whatsonchain.WithNetwork(whatsonchain.NetworkMain))
+}
+
+func attachUTXOs(ctx context.Context, client whatsonchain.ClientInterface, addr string, result *balanceResult) error {
+	history, err := client.AddressUnspentTransactions(ctx, addr)
+	if err != nil {
+		return fmt.Errorf("fetching UTXOs: %w", err)
+	}
+
+	for _, h := range history {
+		result.UTXOs = append(result.UTXOs, utxoRecord{
+			TxHash: h.TxHash,
+			TxPos:  h.TxPos,
+			Value:  h.Value,
+			Height: h.Height,
+		})
+	}
+
+	return nil
+}
+
+func getInput(_ *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
@@ -134,7 +161,7 @@ func getInput(cmd *cobra.Command, args []string) (string, error) {
 	return "", nil
 }
 
-func resolveAddress(input string) (string, error) {
+func resolveAddress(input string, testnet bool) (string, error) {
 	// Try as WIF first
 	privKey, err := ec.PrivateKeyFromWif(input)
 	if err == nil {
@@ -142,6 +169,7 @@ func resolveAddress(input string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("deriving address from WIF: %w", err)
 		}
+
 		return addr.AddressString, nil
 	}
 
@@ -149,38 +177,33 @@ func resolveAddress(input string) (string, error) {
 	return input, nil
 }
 
-func c(color, text string) string {
+func c(color, text string, noColor bool) string {
 	if noColor {
 		return text
 	}
+
 	return color + text + colorReset
 }
 
-func printHuman(result *balanceResult) {
-	fmt.Printf("%s %s\n", c(colorDim, "Address:"), c(colorGreen, result.Address))
-	fmt.Printf("%s %s\n", c(colorDim, "Confirmed:"), c(colorGreen, fmt.Sprintf("%d sats", result.Confirmed)))
-	fmt.Printf("%s %s\n", c(colorDim, "Unconfirmed:"), c(colorGreen, fmt.Sprintf("%d sats", result.Unconfirmed)))
-	fmt.Printf("%s %s\n", c(colorDim, "Total:"), c(colorGreen, fmt.Sprintf("%d sats (%.8f BSV)", result.Total, result.BSV)))
+func printHuman(result *balanceResult, noColor bool) {
+	_, _ = fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Address:", noColor), c(colorGreen, result.Address, noColor))
+	_, _ = fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Confirmed:", noColor), c(colorGreen, fmt.Sprintf("%d sats", result.Confirmed), noColor))
+	_, _ = fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Unconfirmed:", noColor), c(colorGreen, fmt.Sprintf("%d sats", result.Unconfirmed), noColor))
+	_, _ = fmt.Fprintf(os.Stdout, "%s %s\n", c(colorDim, "Total:", noColor), c(colorGreen, fmt.Sprintf("%d sats (%.8f BSV)", result.Total, result.BSV), noColor))
 
 	if len(result.UTXOs) > 0 {
-		fmt.Printf("\n%s\n", c(colorDim, "UTXOs:"))
+		_, _ = fmt.Fprintf(os.Stdout, "\n%s\n", c(colorDim, "UTXOs:", noColor))
+
 		for _, u := range result.UTXOs {
-			fmt.Printf("  %s:%d  %s sats  (height: %d)\n",
-				c(colorGreen, u.TxHash), u.TxPos,
-				c(colorGreen, fmt.Sprintf("%d", u.Value)), u.Height)
+			_, _ = fmt.Fprintf(os.Stdout, "  %s:%d  %s sats  (height: %d)\n",
+				c(colorGreen, u.TxHash, noColor), u.TxPos,
+				c(colorGreen, fmt.Sprintf("%d", u.Value), noColor), u.Height)
 		}
 	}
 }
 
-func init() {
-	rootCmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Use testnet")
-	rootCmd.Flags().BoolVarP(&jsonFlag, "json", "j", false, "Output in JSON format")
-	rootCmd.Flags().BoolVarP(&utxos, "utxos", "u", false, "Show individual UTXOs")
-	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
-}
-
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

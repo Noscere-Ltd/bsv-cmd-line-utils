@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -30,40 +31,54 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Command-line flags
 var (
-	testnet bool   // Use testnet instead of mainnet
-	txid    string // Transaction ID provided via flag
+	errNoTxidProvided = errors.New("no txid provided")
+	errInvalidTxidHex = errors.New("txid is not a valid hex string")
 )
 
-// rootCmd is the main cobra command for the getraw tool.
-var rootCmd = &cobra.Command{
-	Use:   "getraw [txid]",
-	Short: "Get raw transaction data",
-	Long:  "A command line tool that retrieves raw transaction data from WhatsOnChain. Accepts txid as argument or from stdin",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		transactionID, err := getTransactionID(cmd, args)
-		if err != nil {
-			return err
-		}
+// newRootCmd builds the main cobra command for the getraw tool.
+func newRootCmd() *cobra.Command {
+	var (
+		testnet bool   // Use testnet instead of mainnet
+		txid    string // Transaction ID provided via flag
+	)
 
-		if transactionID == "" {
-			cmd.Help()
-			return fmt.Errorf("no txid provided")
-		}
+	cmd := &cobra.Command{
+		Use:   "getraw [txid]",
+		Short: "Get raw transaction data",
+		Long:  "A command line tool that retrieves raw transaction data from WhatsOnChain. Accepts txid as argument or from stdin",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			transactionID, err := getTransactionID(cmd, args, txid)
+			if err != nil {
+				return err
+			}
 
-		// Validate it's a hex string
-		if !cli.IsValidHex(transactionID) {
-			return fmt.Errorf("txid is not a valid hex string: %s", transactionID)
-		}
+			if transactionID == "" {
+				if err := cmd.Help(); err != nil {
+					return err
+				}
 
-		return getRawFromWhatsOnChain(transactionID)
-	},
+				return errNoTxidProvided
+			}
+
+			// Validate it's a hex string
+			if !cli.IsValidHex(transactionID) {
+				return fmt.Errorf("%w: %s", errInvalidTxidHex, transactionID)
+			}
+
+			return getRawFromWhatsOnChain(transactionID, testnet)
+		},
+	}
+
+	cmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Use testnet instead of mainnet")
+	cmd.Flags().StringVarP(&txid, "txid", "i", "", "Transaction ID to retrieve")
+
+	return cmd
 }
 
 // getTransactionID retrieves the transaction ID from argument, flag, or stdin.
-func getTransactionID(cmd *cobra.Command, args []string) (string, error) {
+func getTransactionID(_ *cobra.Command, args []string, txid string) (string, error) {
 	// Get txid from command line argument if provided
 	if len(args) > 0 {
 		return args[0], nil
@@ -90,10 +105,11 @@ func getTransactionID(cmd *cobra.Command, args []string) (string, error) {
 //
 // Logs the chain and network information to stderr.
 // Outputs the raw transaction hex to stdout for easy piping to other tools.
-func getRawFromWhatsOnChain(txid string) error {
+func getRawFromWhatsOnChain(txid string, testnet bool) error {
 	ctx := context.Background()
 
 	var client whatsonchain.ClientInterface
+
 	var err error
 
 	// Create client based on testnet flag
@@ -116,22 +132,17 @@ func getRawFromWhatsOnChain(txid string) error {
 	}
 
 	// Print the raw transaction hex
-	fmt.Println(rawTx)
-	return nil
-}
+	_, _ = fmt.Fprintln(os.Stdout, rawTx)
 
-// init initializes the cobra command flags.
-// This function is automatically called by Go before main() executes.
-func init() {
-	rootCmd.Flags().BoolVarP(&testnet, "testnet", "t", false, "Use testnet instead of mainnet")
-	rootCmd.Flags().StringVarP(&txid, "txid", "i", "", "Transaction ID to retrieve")
+	return nil
 }
 
 // main is the entry point for the getraw command.
 // It executes the cobra root command which handles flag parsing and command execution.
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := newRootCmd().Execute(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 		os.Exit(1)
 	}
 }
