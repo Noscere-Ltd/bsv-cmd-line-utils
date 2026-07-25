@@ -217,7 +217,7 @@ func TestSelectUTXOs(t *testing.T) {
 		// Many small UTXOs - fee increases as more are added
 		utxos := make([]*UTXO, 20)
 		for i := 0; i < 20; i++ {
-			utxos[i] = &UTXO{TxHash: "tx", TxPos: uint32(i), Value: 1000}
+			utxos[i] = &UTXO{TxHash: "tx", TxPos: uint32(i), Value: 1000} //nolint:gosec // G115: loop index bounded by len(utxos)
 		}
 
 		// Target that requires multiple UTXOs
@@ -462,7 +462,7 @@ func BenchmarkCalculateFee(b *testing.B) {
 func BenchmarkSelectUTXOs(b *testing.B) {
 	utxos := make([]*UTXO, 100)
 	for i := 0; i < 100; i++ {
-		utxos[i] = &UTXO{TxHash: "tx", TxPos: uint32(i), Value: uint64((i + 1) * 1000)}
+		utxos[i] = &UTXO{TxHash: "tx", TxPos: uint32(i), Value: uint64((i + 1) * 1000)} //nolint:gosec // G115: loop index bounded by len(utxos)
 	}
 
 	b.ResetTimer()
@@ -494,7 +494,7 @@ func BenchmarkParseUTXOResponse(b *testing.B) {
 func BenchmarkFilterAndDeduplicateUTXOs(b *testing.B) {
 	utxos := make([]*UTXO, 100)
 	for i := 0; i < 100; i++ {
-		utxos[i] = &UTXO{TxHash: "tx", TxPos: uint32(i % 50), Value: uint64(i * 1000)} // Some duplicates
+		utxos[i] = &UTXO{TxHash: "tx", TxPos: uint32(i % 50), Value: uint64(i * 1000)} //nolint:gosec // G115: loop index bounded, some duplicates
 	}
 
 	b.ResetTimer()

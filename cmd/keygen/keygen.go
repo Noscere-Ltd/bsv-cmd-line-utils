@@ -180,7 +180,7 @@ func outputJSON(keyPairs []KeyPair) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 
-	return encoder.Encode(keyPairs) //nolint:gosec // G117: intentionally marshaling private keys in key generator
+	return encoder.Encode(keyPairs)
 }
 
 // outputText prints key pairs in human-readable format.

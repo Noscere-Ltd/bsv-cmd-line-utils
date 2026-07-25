@@ -230,6 +230,7 @@ func resolveHTTPInput(url string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("fetching URL: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {

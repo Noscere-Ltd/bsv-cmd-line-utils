@@ -126,6 +126,7 @@ func (c *Client) BroadcastTransaction(rawTx string) (*TransactionResponse, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
@@ -157,6 +158,7 @@ func (c *Client) GetTransactionStatus(txid string) (*TransactionStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {

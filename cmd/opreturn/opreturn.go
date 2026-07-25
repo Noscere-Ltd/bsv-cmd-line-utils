@@ -219,7 +219,7 @@ func addOpReturnOutputs(tx *transaction.Transaction, parts [][]byte) error {
 // addChangeOutput calculates the fee and, if the change exceeds the dust limit, adds a change
 // output back to sourceAddr. It returns the estimated fee.
 func addChangeOutput(tx *transaction.Transaction, sourceAddr *script.Address, totalInput uint64, flags opreturnFlags) (uint64, error) {
-	estimatedSize := uint64(len(tx.Inputs)*inputSize + (len(tx.Outputs)+1)*outputSize + baseTxSize)
+	estimatedSize := uint64(len(tx.Inputs)*inputSize + (len(tx.Outputs)+1)*outputSize + baseTxSize) //nolint:gosec // G115: len() results are non-negative
 
 	fee := (estimatedSize * flags.feePerKb) / 1000
 	if fee < minFee {
@@ -334,6 +334,7 @@ func fetchUnspentResponse(ctx context.Context, addr string, testnet, debug bool)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
@@ -358,7 +359,7 @@ func fetchUnspentResponse(ctx context.Context, addr string, testnet, debug bool)
 func filterUnspent(result []WOCUnspent) []*UTXO {
 	seen := make(map[string]bool)
 
-	var utxos []*UTXO
+	utxos := make([]*UTXO, 0, len(result))
 
 	for _, u := range result {
 		if u.IsSpentInMempoolTx || u.TxPos < 0 {
@@ -393,7 +394,7 @@ func selectUTXOs(utxos []*UTXO, targetAmount, feeRate uint64, debug bool) ([]*UT
 		return sorted[i].Value > sorted[j].Value
 	})
 
-	var selected []*UTXO
+	selected := make([]*UTXO, 0, len(sorted))
 
 	var totalValue uint64
 

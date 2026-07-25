@@ -377,7 +377,7 @@ func selectUTXOs(utxos []*UTXO, targetAmount, feePerKb uint64, debug bool) ([]*U
 		return sortedUTXOs[i].Value > sortedUTXOs[j].Value
 	})
 
-	var selected []*UTXO
+	selected := make([]*UTXO, 0, len(sortedUTXOs))
 
 	var totalValue uint64
 
@@ -518,8 +518,8 @@ func addPaymentOutputs(tx *transaction.Transaction, destAddr *script.Address, de
 	}
 
 	// Calculate amount per output and remainder
-	amountPerOutput := amount / uint64(numOutputs)
-	remainder := amount % uint64(numOutputs)
+	amountPerOutput := amount / uint64(numOutputs) //nolint:gosec // G115: numOutputs is guarded to be >= 1 above
+	remainder := amount % uint64(numOutputs)       //nolint:gosec // G115: numOutputs is guarded to be >= 1 above
 
 	// Add outputs with equal amounts
 	for i := 0; i < numOutputs; i++ {
@@ -551,7 +551,7 @@ func addPaymentOutputs(tx *transaction.Transaction, destAddr *script.Address, de
 // NO SATOSHI LEFT BEHIND: if change > 0, always create a change output.
 func addChangeOutput(tx *transaction.Transaction, changeAddr *script.Address, totalInput, amount, feePerKb uint64, debug bool) error {
 	// Calculate fees
-	estimatedSize := uint64(len(tx.Inputs)*inputSize + len(tx.Outputs)*outputSize + baseTxSize)
+	estimatedSize := uint64(len(tx.Inputs)*inputSize + len(tx.Outputs)*outputSize + baseTxSize) //nolint:gosec // G115: len() results are non-negative
 	fee := (estimatedSize * feePerKb) / 1000
 
 	// Add extra for the change output size
