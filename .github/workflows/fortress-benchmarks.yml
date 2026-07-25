@@ -266,8 +266,15 @@ jobs:
         id: bench-summary
         if: always()
         run: |
+          BENCH_START="${{ steps.bench-timer.outputs.bench-start }}"
+          if [ -z "$BENCH_START" ]; then
+            echo "⚠️ Benchmark timer never started (an earlier step was skipped) - skipping stats"
+            echo "bench_status=skipped" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           BENCH_END=$(date +%s)
-          BENCH_DURATION=$((BENCH_END - ${{ steps.bench-timer.outputs.bench-start }}))
+          BENCH_DURATION=$((BENCH_END - BENCH_START))
 
           # Count benchmarks
           BENCHMARK_COUNT=$(find . -type f -name '*_test.go' \
