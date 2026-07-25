@@ -371,6 +371,21 @@ runs:
         cache: false # we handle caches ourselves
 
     # --------------------------------------------------------------------
+    # Install cgo build dependencies
+    # golang.design/x/clipboard compiles clipboard_linux.c, which includes
+    # <X11/Xlib.h>. Without libx11-dev, any go build/test/lint fails with
+    # "fatal error: X11/Xlib.h: No such file or directory".
+    # --------------------------------------------------------------------
+    - name: 📦 Install X11 development headers
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends libx11-dev
+        echo "✅ X11 headers installed"
+
+    # --------------------------------------------------------------------
     # Summary and validation
     # --------------------------------------------------------------------
     - name: ✅ Go setup summary
