@@ -157,7 +157,7 @@ Outputs raw transaction hex to stdout.
 #### How It Works
 
 1. Derives P2PKH address from WIF
-2. Fetches UTXOs from WhatsOnChain API
+2. Fetches UTXOs from BananaBlocks, falling back to WhatsOnChain
 3. Selects UTXOs using largest-first algorithm
 4. Builds transaction (payment + change outputs)
 5. Estimates fee based on transaction size
@@ -399,7 +399,20 @@ targets:
   wait_for_mining: false
 ```
 
-### WhatsOnChain (carve, getraw)
+### BananaBlocks (carve, opreturn)
+
+No configuration needed. Primary UTXO source, with WhatsOnChain as an automatic
+fallback when it errors or returns a possibly truncated result. The network is
+selected by host, not by path — the path segment is fixed at `/bsv/main`:
+- Mainnet: `https://bananablocks.com/api/v1/bsv/main/`
+- Testnet: `https://test.bananablocks.com/api/v1/bsv/main/`
+
+Results are capped at 1000 per request; a full page falls through to WhatsOnChain
+rather than silently dropping UTXOs.
+
+Rate limit: 60 requests/minute per IP (anonymous).
+
+### WhatsOnChain (carve, opreturn, getraw, balance)
 
 No configuration needed. Uses public API endpoints:
 - Mainnet: `https://api.whatsonchain.com/v1/bsv/main/`
@@ -548,11 +561,17 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 
 ## API Endpoints Used
 
+### BananaBlocks (no auth required)
+
+| Endpoint | Used By |
+|----------|---------|
+| `GET /api/v1/bsv/main/address/{addr}/unspent/all?limit=1000` | carve, opreturn |
+
 ### WhatsOnChain (no auth required)
 
 | Endpoint | Used By |
 |----------|---------|
-| `GET /v1/bsv/{net}/address/{addr}/unspent/all` | carve |
+| `GET /v1/bsv/{net}/address/{addr}/unspent/all` | carve, opreturn (fallback) |
 | `GET /v1/bsv/{net}/tx/{txid}/hex` | getraw |
 
 ### ARC (API key required)

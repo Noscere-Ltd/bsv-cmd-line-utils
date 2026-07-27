@@ -122,7 +122,7 @@ polling:
   backoff_factor: 1.5
 ```
 
-Other tools (`carve`, `getraw`, `balance`) query WhatsOnChain directly — no API key required.
+Other tools query public block explorers directly — no API key required. `carve` and `opreturn` fetch UTXOs from BananaBlocks and fall back to WhatsOnChain; `getraw` and `balance` use WhatsOnChain.
 
 ## Project Structure
 

@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"sort"
 
@@ -19,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/cli"
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/utxo"
 )
 
 // Transaction size estimation constants (same as carve)
@@ -33,7 +32,6 @@ var (
 	errWifRequired       = errors.New("--wif is required")
 	errNoDataProvided    = errors.New("no data provided")
 	errNoUTXOsForAddress = errors.New("no UTXOs found for address")
-	errWhatsOnChainAPI   = errors.New("WhatsOnChain API error")
 	errAPIError          = errors.New("API error")
 	errNoUTXOsAvailable  = errors.New("no UTXOs available")
 	errInsufficientFunds = errors.New("insufficient funds")
@@ -312,39 +310,11 @@ func getUnspentOutputs(ctx context.Context, addr string, testnet, debug bool) ([
 	return filterUnspent(response.Result), nil
 }
 
-// fetchUnspentResponse calls the WhatsOnChain unspent/all endpoint for addr and decodes the response.
+// fetchUnspentResponse calls the unspent/all endpoint for addr and decodes the response.
 func fetchUnspentResponse(ctx context.Context, addr string, testnet, debug bool) (*WOCUnspentAllResponse, error) {
-	network := "main"
-	if testnet {
-		network = "test"
-	}
-
-	url := fmt.Sprintf("https://api.whatsonchain.com/v1/bsv/%s/address/%s/unspent/all", network, addr)
-
-	if debug {
-		log.Printf("Fetching UTXOs from WhatsOnChain (%s)...", network)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	body, err := utxo.Fetch(ctx, addr, testnet, debug)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
-	}
-
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("%w (status %d): %s", errWhatsOnChainAPI, resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, err
 	}
 
 	var response WOCUnspentAllResponse

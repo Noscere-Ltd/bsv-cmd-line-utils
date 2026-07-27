@@ -8,7 +8,7 @@
 //   - Automatic fee estimation with 100 satoshi minimum floor
 //   - Support for "send all" transactions (sats=0) — sends to destination address
 //   - Split payments across multiple equal outputs with remainder handling
-//   - Mainnet/testnet support via WhatsOnChain API
+//   - Mainnet/testnet support via BananaBlocks, falling back to WhatsOnChain
 //   - Debug mode for verbose logging
 //   - Change output for every non-zero remainder (NO SATOSHI LEFT BEHIND)
 //
@@ -28,9 +28,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"sort"
 
@@ -39,6 +37,8 @@ import (
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
 	"github.com/spf13/cobra"
+
+	"github.com/Noscere-Ltd/bsv-cmd-line-utils/internal/utxo"
 )
 
 // Transaction size estimation constants
@@ -55,7 +55,6 @@ var (
 	errSplitRequiresAmount   = errors.New("--split requires a specific amount (--sats), cannot be used with send-all mode")
 	errNoUTXOsForAddress     = errors.New("no UTXOs found for address")
 	errNoAvailableUTXOs      = errors.New("no available UTXOs for address (all are spent in mempool)")
-	errWhatsOnChainAPI       = errors.New("WhatsOnChain API error")
 	errAPIError              = errors.New("API error")
 	errNoUTXOsAvailable      = errors.New("no UTXOs available")
 	errInsufficientFunds     = errors.New("insufficient funds")
@@ -236,52 +235,18 @@ func selectAppropriateUTXOs(utxos []*UTXO, f *flags) ([]*UTXO, error) {
 
 // getUnspentOutputs fetches all unspent transaction outputs (UTXOs) for a given address.
 func getUnspentOutputs(ctx context.Context, addr string, f *flags) ([]*UTXO, error) {
-	network := "main"
-	if f.testnet {
-		network = "test"
+	body, err := utxo.Fetch(ctx, addr, f.testnet, f.debug)
+	if err != nil {
+		return nil, err
 	}
 
-	url := fmt.Sprintf("https://api.whatsonchain.com/v1/bsv/%s/address/%s/unspent/all", network, addr)
-
-	if f.debug {
-		log.Printf("Fetching UTXOs from WhatsOnChain (%s network)...", network)
-	}
-
-	// Fetch from API
-	utxos, err := fetchUTXOsFromAPI(ctx, url)
+	utxos, err := parseUTXOResponse(body)
 	if err != nil {
 		return nil, err
 	}
 
 	// Filter and deduplicate
 	return filterAndDeduplicateUTXOs(utxos, addr, f.debug)
-}
-
-// fetchUTXOsFromAPI makes the HTTP request to WhatsOnChain.
-func fetchUTXOsFromAPI(ctx context.Context, url string) ([]*UTXO, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch UTXOs: %w", err)
-	}
-
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("%w (status %d): %s", errWhatsOnChainAPI, resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	return parseUTXOResponse(body)
 }
 
 // WOCUnspent represents a single UTXO from WhatsOnChain API.
