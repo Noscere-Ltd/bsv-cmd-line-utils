@@ -70,15 +70,19 @@ keygen -t -c 3 -j               # 3 testnet keys in JSON
 
 #### Output (JSON)
 
+Emits a JSON array (one element per generated key pair):
+
 ```json
-{
-  "privateKey": "hex...",
-  "publicKey": "hex...",
-  "wif": "K...",
-  "address": "1...",
-  "network": "mainnet",
-  "compressed": true
-}
+[
+  {
+    "privateKey": "hex...",
+    "publicKey": "hex...",
+    "wif": "K...",
+    "address": "1...",
+    "network": "mainnet",
+    "compressed": true
+  }
+]
 ```
 
 ---
@@ -103,14 +107,15 @@ wifinfo --no-color <wif>        # Plain output (for scripting)
 |------|-------|-------------|---------|
 | `--wif` | `-w` | WIF string via flag | - |
 | `--json` | `-j` | Output in JSON format | false |
+| `--uncompressed` | `-u` | Include uncompressed keys, WIFs, and addresses | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output
 
 Shows for both mainnet and testnet:
-- Compressed and uncompressed public keys
-- Compressed and uncompressed addresses
-- Compressed and uncompressed WIF encodings
+- Compressed public key (uncompressed also with `-u`)
+- Compressed address (uncompressed also with `-u`)
+- Compressed WIF encoding (uncompressed also with `-u`)
 - Detected input network and compression
 
 ---
@@ -126,7 +131,7 @@ Creates and signs BSV transactions with smart UTXO selection and automatic fee e
 - Split payments across multiple equal outputs
 - Mainnet/testnet support
 - Debug mode for verbose UTXO selection logging
-- Dust limit protection
+- NO SATOSHI LEFT BEHIND: change always gets its own output when non-zero
 
 #### Usage
 
@@ -150,8 +155,7 @@ Outputs raw transaction hex to stdout.
 | `--sats` | `-s` | Amount in satoshis (0 = send all) | 0 |
 | `--testnet` | `-t` | Use testnet | false |
 | `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
-| `--dust` | `-d` | Dust limit in satoshis | 1 |
-| `--num-outputs` | `-n` | Split into N equal outputs | 1 |
+| `--split` | `-n` | Split into N equal outputs | 1 |
 | `--debug` | - | Enable debug logging | false |
 
 #### How It Works
@@ -267,54 +271,48 @@ Parses raw BSV transactions and displays their components in a human-readable, c
 #### Usage
 
 ```bash
+prettytx                                       # Parse from clipboard
 echo <rawtx> | prettytx                        # Colorized breakdown
 prettytx -r <rawtx>                            # From flag
 prettytx --no-color -r <rawtx>                 # Plain (for scripting)
+prettytx -c -r <rawtx>                         # Compact (truncate long scripts)
 getraw <txid> | prettytx                       # Chain with fetcher
-carve -w <WIF> -a <addr> -s 1000 | prettytx   # Preview before broadcast
+carve -w <WIF> -a <addr> -s 1000 | prettytx    # Preview before broadcast
 ```
+
+If no `--raw` flag is given and stdin is not piped, `prettytx` falls back to reading hex from the system clipboard.
 
 #### Flags
 
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--raw` | `-r` | Raw transaction hex | - |
+| `--compact` | `-c` | Truncate long script hex in the output | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output Format
 
 ```
-================================================================================
-TRANSACTION BREAKDOWN
-================================================================================
-
+TX ID: def456...
+────────────────────────────────────────────────────────────────────────────────
 Version: 1 (0x00000001)
-In-counter: 1
+Inputs: 1
 
-INPUTS:
---------------------------------------------------------------------------------
-Input #0:
-  Prev TX ID: abc123...
-  Prev Vout: 0
-  Script Length: 107 bytes
-  Script (hex): 473044022...
+INPUT #0
+  Prev: abc123...:0
+  Script: 473044022... (107 bytes)
+  Address: 1abc...
   Sequence: 4294967295 (0xffffffff)
+Outputs: 2
 
-Out-counter: 2
+OUTPUT #0
+  Value: 1000 sats (0.00001000 BSV)
+  Script: 76a914... (25 bytes)
+  Address: 1def...
 
-OUTPUTS:
---------------------------------------------------------------------------------
-Output #0:
-  Value: 1000 satoshis (0.00001000 BSV)
-  Script Length: 25 bytes
-  Script (hex): 76a914...
-
-nLockTime: 0 (0x00000000)
-           (Not locked)
-
-================================================================================
-Transaction ID: def456...
-================================================================================
+nLockTime: 0 (Not locked)
+────────────────────────────────────────────────────────────────────────────────
+TX ID: def456...
 ```
 
 ---

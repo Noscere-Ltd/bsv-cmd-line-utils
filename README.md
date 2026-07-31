@@ -170,3 +170,7 @@ For security issues, see [SECURITY.md](.github/SECURITY.md).
 ## License
 
 [MIT](LICENSE)
+
+---
+
+Documentation up to date as of commit: `001e9d9`
