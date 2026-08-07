@@ -170,3 +170,6 @@ For security issues, see [SECURITY.md](.github/SECURITY.md).
 ## License
 
 [MIT](LICENSE)
+
+<!-- docs-up-to-date-commit: e4fd1cf6c63e8acc29f74b2806bf104aee188091 -->
+_Documentation up to date as of commit `e4fd1cf`._

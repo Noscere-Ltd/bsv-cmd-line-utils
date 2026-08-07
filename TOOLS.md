@@ -1,6 +1,6 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+Command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
@@ -103,6 +103,7 @@ wifinfo --no-color <wif>        # Plain output (for scripting)
 |------|-------|-------------|---------|
 | `--wif` | `-w` | WIF string via flag | - |
 | `--json` | `-j` | Output in JSON format | false |
+| `--uncompressed` | `-u` | Include uncompressed keys, WIFs, and addresses | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output
@@ -150,8 +151,7 @@ Outputs raw transaction hex to stdout.
 | `--sats` | `-s` | Amount in satoshis (0 = send all) | 0 |
 | `--testnet` | `-t` | Use testnet | false |
 | `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
-| `--dust` | `-d` | Dust limit in satoshis | 1 |
-| `--num-outputs` | `-n` | Split into N equal outputs | 1 |
+| `--split` | `-n` | Split into N equal outputs | 1 |
 | `--debug` | - | Enable debug logging | false |
 
 #### How It Works
@@ -279,6 +279,7 @@ carve -w <WIF> -a <addr> -s 1000 | prettytx   # Preview before broadcast
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--raw` | `-r` | Raw transaction hex | - |
+| `--compact` | `-c` | Enable compact output with truncated scripts | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output Format
