@@ -1,6 +1,6 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+Fourteen command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
@@ -8,12 +8,18 @@ Eight command-line tools for the full Bitcoin SV transaction lifecycle.
 - [Tools Overview](#tools-overview)
   - [keygen — Key Pair Generator](#keygen---key-pair-generator)
   - [wifinfo — WIF Key Inspector](#wifinfo---wif-key-inspector)
+  - [addr — Address Validator / Deriver](#addr--address-validator--deriver)
+  - [balance — Address Balance Checker](#balance--address-balance-checker)
   - [carve — Transaction Builder](#carve---transaction-builder)
+  - [opreturn — OP_RETURN Transaction Builder](#opreturn--op_return-transaction-builder)
   - [broadcast — Transaction Broadcaster](#broadcast---transaction-broadcaster)
   - [txstatus — Status Checker](#txstatus---status-checker)
   - [getraw — Transaction Fetcher](#getraw---transaction-fetcher)
   - [prettytx — Transaction Parser](#prettytx---transaction-parser)
   - [pick — Transaction Field Extractor](#pick---transaction-field-extractor)
+  - [decodescript — Script Disassembler](#decodescript--script-disassembler)
+  - [signmsg — Message Signer](#signmsg--message-signer)
+  - [verifymsg — Message Verifier](#verifymsg--message-verifier)
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Transaction Size & Fees](#transaction-size--fees)
@@ -38,6 +44,12 @@ go install ./cmd/txstatus
 go install ./cmd/getraw
 go install ./cmd/prettytx
 go install ./cmd/pick
+go install ./cmd/addr
+go install ./cmd/balance
+go install ./cmd/opreturn
+go install ./cmd/decodescript
+go install ./cmd/signmsg
+go install ./cmd/verifymsg
 ```
 
 ---
@@ -372,6 +384,146 @@ Accepts raw hex from argument, `-r` flag, stdin, `file://` path, or HTTP URL.
 
 ---
 
+### addr — Address Validator / Deriver
+
+Validates a BSV address, or derives mainnet and testnet addresses from a hex-encoded public key.
+
+#### Usage
+
+```bash
+addr 1A1zP1eP...                # Validate a mainnet address
+addr n2ZNV88u...                # Validate a testnet address
+addr 03a34b99f2...              # Derive addresses from a hex pubkey
+addr -j 1A1zP1eP...             # JSON output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### balance — Address Balance Checker
+
+Fetches the confirmed and unconfirmed balance of a BSV address from WhatsOnChain. Accepts an address or a WIF (which is decoded to its address first). Optionally lists individual UTXOs.
+
+#### Usage
+
+```bash
+balance 1A1zP1eP...             # Mainnet balance
+balance -t mrCDrCyH...          # Testnet balance
+balance -u 1A1zP1eP...          # Include the UTXO list
+balance -j 1A1zP1eP...          # JSON output
+balance <WIF>                   # Balance for the address derived from a WIF
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--testnet` | `-t` | Query the testnet API | false |
+| `--utxos` | `-u` | Include individual UTXOs in output | false |
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### opreturn — OP_RETURN Transaction Builder
+
+Builds and signs a BSV transaction whose sole non-change output is an `OP_RETURN` payload — one or more data pushes.
+
+#### Usage
+
+```bash
+# Single push
+opreturn -w <WIF> "hello world"
+
+# Multiple pushes (each argument becomes its own push)
+opreturn -w <WIF> "prefix" "payload"
+
+# Testnet with custom fee
+opreturn -w <WIF> -t -f 50 "payload"
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key for funding + signing (required) | — |
+| `--testnet` | `-t` | Use testnet | false |
+| `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
+| `--dust` | `-d` | Dust limit in satoshis | 1 |
+| `--debug` | - | Enable debug logging | false |
+
+---
+
+### decodescript — Script Disassembler
+
+Decodes a hex-encoded Bitcoin script (locking or unlocking) to human-readable ASM, with script-type detection (P2PKH, P2PK, multisig, OP_RETURN, etc.). Reads from an argument or stdin.
+
+#### Usage
+
+```bash
+decodescript 76a914...88ac      # Decode a hex script
+echo 76a914...88ac | decodescript
+decodescript -j 76a914...88ac   # JSON output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### signmsg — Message Signer
+
+Signs a message with a BSV private key using the Bitcoin Signed Message format (compatible with `verifymsg` and standard BSV wallets).
+
+#### Usage
+
+```bash
+signmsg -w <WIF> -m "hello"     # Sign a message inline
+echo "hello" | signmsg -w <WIF> # Read message from stdin
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key for signing (required) | — |
+| `--message` | `-m` | Message to sign (falls back to stdin if omitted) | — |
+
+---
+
+### verifymsg — Message Verifier
+
+Verifies a Bitcoin Signed Message signature against an address.
+
+#### Usage
+
+```bash
+verifymsg -a <address> -s <base64-sig> -m "hello"
+echo "hello" | verifymsg -a <address> -s <base64-sig>
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--address` | `-a` | BSV address to verify against (required) | — |
+| `--signature` | `-s` | Base64-encoded signature (required) | — |
+| `--message` | `-m` | Message to verify (falls back to stdin if omitted) | — |
+
+Exits with a non-zero status if the signature does not verify.
+
+---
+
 ## Configuration
 
 ### ARC Configuration (broadcast, txstatus)
@@ -567,3 +719,8 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 ## License
 
 See project [LICENSE](LICENSE) file.
+
+---
+<!-- docs-sync -->
+Documentation up to date as of commit: `5f950f095d10eba5b552100895ba274f23ecb98d`
+_This marker is maintained by an automated documentation sync routine. If HEAD has moved past this commit, the routine will re-check for doc drift on its next run._
