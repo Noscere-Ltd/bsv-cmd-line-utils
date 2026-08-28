@@ -1,6 +1,6 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+Fourteen command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
@@ -8,12 +8,18 @@ Eight command-line tools for the full Bitcoin SV transaction lifecycle.
 - [Tools Overview](#tools-overview)
   - [keygen — Key Pair Generator](#keygen---key-pair-generator)
   - [wifinfo — WIF Key Inspector](#wifinfo---wif-key-inspector)
+  - [addr — Address Validator / Deriver](#addr--address-validator--deriver)
+  - [balance — Address Balance Checker](#balance--address-balance-checker)
   - [carve — Transaction Builder](#carve---transaction-builder)
+  - [opreturn — OP_RETURN Transaction Builder](#opreturn--op_return-transaction-builder)
   - [broadcast — Transaction Broadcaster](#broadcast---transaction-broadcaster)
   - [txstatus — Status Checker](#txstatus---status-checker)
   - [getraw — Transaction Fetcher](#getraw---transaction-fetcher)
   - [prettytx — Transaction Parser](#prettytx---transaction-parser)
   - [pick — Transaction Field Extractor](#pick---transaction-field-extractor)
+  - [decodescript — Script Disassembler](#decodescript--script-disassembler)
+  - [signmsg — Message Signer (BSM)](#signmsg--message-signer-bsm)
+  - [verifymsg — Message Verifier (BSM)](#verifymsg--message-verifier-bsm)
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Transaction Size & Fees](#transaction-size--fees)
@@ -32,12 +38,18 @@ go install ./cmd/...
 # Or install individually
 go install ./cmd/keygen
 go install ./cmd/wifinfo
+go install ./cmd/addr
+go install ./cmd/balance
 go install ./cmd/carve
+go install ./cmd/opreturn
 go install ./cmd/broadcast
 go install ./cmd/txstatus
 go install ./cmd/getraw
 go install ./cmd/prettytx
 go install ./cmd/pick
+go install ./cmd/decodescript
+go install ./cmd/signmsg
+go install ./cmd/verifymsg
 ```
 
 ---
@@ -115,6 +127,32 @@ Shows for both mainnet and testnet:
 
 ---
 
+### addr — Address Validator / Deriver
+
+Validates a BSV address (showing network and hash160) or derives mainnet/testnet addresses from a public-key hex.
+
+```bash
+addr <address>         # Validate: prints network and hash160
+addr <pubkey_hex>      # Derive: prints mainnet + testnet addresses
+addr --help            # Full flag reference
+```
+
+---
+
+### balance — Address Balance Checker
+
+Queries an address balance via WhatsOnChain. Accepts either an address or a WIF (from which the address is derived).
+
+```bash
+balance <address>      # Balance + UTXO list
+balance <wif>          # Derive address from WIF, then query
+balance --help         # Full flag reference
+```
+
+No API key required.
+
+---
+
 ### carve — Transaction Builder
 
 Creates and signs BSV transactions with smart UTXO selection and automatic fee estimation.
@@ -163,6 +201,19 @@ Outputs raw transaction hex to stdout.
 5. Estimates fee based on transaction size
 6. Signs all inputs
 7. Outputs raw hex to stdout
+
+---
+
+### opreturn — OP_RETURN Transaction Builder
+
+Builds and signs a BSV transaction whose only spendable-side output is an `OP_RETURN` with the supplied data pushes. Multiple positional arguments become multiple pushdata parts; the raw tx hex is written to stdout ready to pipe into `broadcast`.
+
+```bash
+opreturn -w <WIF> "hello" "world"                    # Two pushdata parts
+opreturn -w <WIF> -t "testnet payload"               # Testnet
+opreturn -w <WIF> "payload" | broadcast -m           # Build → broadcast
+opreturn --help                                       # Full flag reference
+```
 
 ---
 
@@ -372,6 +423,43 @@ Accepts raw hex from argument, `-r` flag, stdin, `file://` path, or HTTP URL.
 
 ---
 
+### decodescript — Script Disassembler
+
+Decodes a hex-encoded Bitcoin script into human-readable ASM opcodes, detects the script type (P2PKH, P2SH, `OP_RETURN`, multisig, …) and extracts any embedded addresses.
+
+```bash
+decodescript <hex>                       # From argument
+echo <hex> | decodescript                # From stdin
+getraw <txid> | pick --output-script 0 | decodescript
+decodescript --help                       # Full flag reference
+```
+
+---
+
+### signmsg — Message Signer (BSM)
+
+Signs a message using the Bitcoin Signed Message format and prints the base64 signature to stdout.
+
+```bash
+echo "hello world" | signmsg -w <WIF>    # Signature to stdout
+signmsg -w <WIF> -m "hello world"        # Message via flag
+signmsg --help                            # Full flag reference
+```
+
+---
+
+### verifymsg — Message Verifier (BSM)
+
+Verifies a Bitcoin Signed Message signature against an address. Exits `0` if the signature is valid, `1` if not.
+
+```bash
+verifymsg -a <address> -s <base64_sig> -m "hello world"
+echo "hello world" | verifymsg -a <address> -s <base64_sig>
+verifymsg --help                          # Full flag reference
+```
+
+---
+
 ## Configuration
 
 ### ARC Configuration (broadcast, txstatus)
@@ -563,6 +651,11 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 | `GET /v1/tx/{txid}` | txstatus, broadcast (monitoring) |
 
 ---
+
+---
+<!-- docs-sync -->
+Documentation up to date as of commit: `338487d`
+_This marker is maintained by an automated documentation sync routine. If HEAD has moved past this commit, the routine will re-check for doc drift on its next run._
 
 ## License
 

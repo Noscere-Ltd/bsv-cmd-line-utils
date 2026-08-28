@@ -170,3 +170,8 @@ For security issues, see [SECURITY.md](.github/SECURITY.md).
 ## License
 
 [MIT](LICENSE)
+
+---
+<!-- docs-sync -->
+Documentation up to date as of commit: `338487d`
+_This marker is maintained by an automated documentation sync routine. If HEAD has moved past this commit, the routine will re-check for doc drift on its next run._
