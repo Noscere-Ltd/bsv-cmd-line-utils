@@ -1,6 +1,6 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+Fourteen command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
@@ -8,12 +8,18 @@ Eight command-line tools for the full Bitcoin SV transaction lifecycle.
 - [Tools Overview](#tools-overview)
   - [keygen — Key Pair Generator](#keygen---key-pair-generator)
   - [wifinfo — WIF Key Inspector](#wifinfo---wif-key-inspector)
+  - [addr — Address Validator & Deriver](#addr---address-validator--deriver)
+  - [balance — Address Balance Checker](#balance---address-balance-checker)
   - [carve — Transaction Builder](#carve---transaction-builder)
+  - [opreturn — OP_RETURN Transaction Builder](#opreturn---op_return-transaction-builder)
   - [broadcast — Transaction Broadcaster](#broadcast---transaction-broadcaster)
   - [txstatus — Status Checker](#txstatus---status-checker)
   - [getraw — Transaction Fetcher](#getraw---transaction-fetcher)
   - [prettytx — Transaction Parser](#prettytx---transaction-parser)
   - [pick — Transaction Field Extractor](#pick---transaction-field-extractor)
+  - [decodescript — Script Disassembler](#decodescript---script-disassembler)
+  - [signmsg — Message Signer](#signmsg---message-signer)
+  - [verifymsg — Message Verifier](#verifymsg---message-verifier)
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Transaction Size & Fees](#transaction-size--fees)
@@ -32,12 +38,18 @@ go install ./cmd/...
 # Or install individually
 go install ./cmd/keygen
 go install ./cmd/wifinfo
+go install ./cmd/addr
+go install ./cmd/balance
 go install ./cmd/carve
+go install ./cmd/opreturn
 go install ./cmd/broadcast
 go install ./cmd/txstatus
 go install ./cmd/getraw
 go install ./cmd/prettytx
 go install ./cmd/pick
+go install ./cmd/decodescript
+go install ./cmd/signmsg
+go install ./cmd/verifymsg
 ```
 
 ---
@@ -94,6 +106,7 @@ wifinfo <wif>                   # Parse from argument
 wifinfo -w <wif>                # Parse from flag
 echo <wif> | wifinfo            # Parse from stdin
 wifinfo -j <wif>                # JSON output
+wifinfo -u <wif>                # Also include uncompressed forms
 wifinfo --no-color <wif>        # Plain output (for scripting)
 ```
 
@@ -103,15 +116,61 @@ wifinfo --no-color <wif>        # Plain output (for scripting)
 |------|-------|-------------|---------|
 | `--wif` | `-w` | WIF string via flag | - |
 | `--json` | `-j` | Output in JSON format | false |
+| `--uncompressed` | `-u` | Include uncompressed keys, WIFs, and addresses | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output
 
 Shows for both mainnet and testnet:
-- Compressed and uncompressed public keys
-- Compressed and uncompressed addresses
-- Compressed and uncompressed WIF encodings
+- Compressed public key, address, and WIF
+- Uncompressed forms when `-u` is set
 - Detected input network and compression
+
+---
+
+### addr — Address Validator & Deriver
+
+Validates a BSV address or derives mainnet/testnet addresses from a public key hex.
+
+#### Usage
+
+```bash
+addr <address>                  # Validate a BSV address
+addr <pubkey_hex>               # Derive addresses from a public key
+addr -j <input>                 # JSON output
+addr --no-color <input>         # Plain output (for scripting)
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### balance — Address Balance Checker
+
+Checks the confirmed and unconfirmed balance of a BSV address (or the address derived from a WIF) via WhatsOnChain, and optionally lists its UTXOs.
+
+#### Usage
+
+```bash
+balance <address_or_wif>        # Mainnet balance
+balance -t <address_or_wif>     # Testnet balance
+balance -u <address>            # Also show individual UTXOs
+balance -j <address>            # JSON output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--testnet` | `-t` | Use testnet | false |
+| `--utxos` | `-u` | Show individual UTXOs | false |
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
 
 ---
 
@@ -150,8 +209,7 @@ Outputs raw transaction hex to stdout.
 | `--sats` | `-s` | Amount in satoshis (0 = send all) | 0 |
 | `--testnet` | `-t` | Use testnet | false |
 | `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
-| `--dust` | `-d` | Dust limit in satoshis | 1 |
-| `--num-outputs` | `-n` | Split into N equal outputs | 1 |
+| `--split` | `-n` | Split the amount into N equal outputs | 1 |
 | `--debug` | - | Enable debug logging | false |
 
 #### How It Works
@@ -163,6 +221,32 @@ Outputs raw transaction hex to stdout.
 5. Estimates fee based on transaction size
 6. Signs all inputs
 7. Outputs raw hex to stdout
+
+---
+
+### opreturn — OP_RETURN Transaction Builder
+
+Builds and signs a transaction whose output carries one or more OP_RETURN data pushes. UTXOs are fetched and signed with the supplied WIF; the resulting raw transaction hex is written to stdout.
+
+#### Usage
+
+```bash
+opreturn -w <WIF> "hello world"               # Single data push
+opreturn -w <WIF> part1 part2 part3           # Multiple data pushes
+opreturn -w <WIF> -t "testnet message"        # Testnet
+opreturn -w <WIF> -f 200 "data"               # Custom fee rate
+opreturn -w <WIF> --debug "data"              # Verbose logging
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key for signing (required) | - |
+| `--testnet` | `-t` | Use testnet | false |
+| `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
+| `--dust` | `-d` | Dust limit in satoshis | 1 |
+| `--debug` | - | Enable debug logging | false |
 
 ---
 
@@ -279,6 +363,7 @@ carve -w <WIF> -a <addr> -s 1000 | prettytx   # Preview before broadcast
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--raw` | `-r` | Raw transaction hex | - |
+| `--compact` | `-c` | Compact output with truncated scripts | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output Format
@@ -369,6 +454,69 @@ Accepts raw hex from argument, `-r` flag, stdin, `file://` path, or HTTP URL.
 | `--version` | `-v` | Transaction version |
 | `--locktime` | `-l` | Transaction locktime |
 | `--txid` | - | Transaction ID |
+
+---
+
+### decodescript — Script Disassembler
+
+Decodes a hex-encoded Bitcoin script into human-readable ASM, with type detection (P2PKH, OP_RETURN, etc.).
+
+#### Usage
+
+```bash
+decodescript <hex>              # Decode from argument
+echo <hex> | decodescript       # Decode from stdin
+decodescript -j <hex>           # JSON output
+decodescript --no-color <hex>   # Plain output (for scripting)
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### signmsg — Message Signer
+
+Signs a message with a BSV private key using the Bitcoin Signed Message (BSM) format and prints the base64 signature.
+
+#### Usage
+
+```bash
+signmsg -w <WIF> -m "hello"             # Sign a message
+echo "hello" | signmsg -w <WIF>         # Message from stdin
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key for signing (required) | - |
+| `--message` | `-m` | Message to sign (otherwise read from stdin) | - |
+
+---
+
+### verifymsg — Message Verifier
+
+Verifies a Bitcoin Signed Message signature against a BSV address.
+
+#### Usage
+
+```bash
+verifymsg -a <address> -s <base64_sig> -m "hello"
+echo "hello" | verifymsg -a <address> -s <base64_sig>
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--address` | `-a` | BSV address to verify against (required) | - |
+| `--signature` | `-s` | Base64-encoded signature (required) | - |
+| `--message` | `-m` | Message to verify (otherwise read from stdin) | - |
 
 ---
 
@@ -567,3 +715,7 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 ## License
 
 See project [LICENSE](LICENSE) file.
+
+<!-- docs-sync -->
+Documentation up to date as of commit: `83ade21ff596a768507c837419bae431bb509eb2`
+_This marker is maintained by an automated documentation sync routine. If HEAD has moved past this commit, the routine will re-check for doc drift on its next run._
