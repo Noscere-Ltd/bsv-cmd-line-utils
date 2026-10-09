@@ -33,6 +33,8 @@ cd bsv-cmd-line-utils
 go install ./cmd/...
 ```
 
+Requires Go 1.26 or later (see `go.mod`).
+
 ## Quick Start
 
 ### Generate a key pair
@@ -122,7 +124,7 @@ polling:
   backoff_factor: 1.5
 ```
 
-Other tools (`carve`, `getraw`, `balance`) query WhatsOnChain directly — no API key required.
+Other tools (`carve`, `getraw`, `balance`, `opreturn`) query WhatsOnChain directly — no API key required.
 
 ## Project Structure
 
@@ -170,3 +172,7 @@ For security issues, see [SECURITY.md](.github/SECURITY.md).
 ## License
 
 [MIT](LICENSE)
+
+---
+
+Documentation up to date as of commit: `8ee1b2e144ffe75cf418ee24090b4dfad65b7ddd`

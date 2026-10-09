@@ -1,6 +1,6 @@
 # BSV Transaction Tools — User Guide
 
-Eight command-line tools for the full Bitcoin SV transaction lifecycle.
+Fourteen command-line tools for the full Bitcoin SV transaction lifecycle.
 
 ## Table of Contents
 
@@ -14,6 +14,12 @@ Eight command-line tools for the full Bitcoin SV transaction lifecycle.
   - [getraw — Transaction Fetcher](#getraw---transaction-fetcher)
   - [prettytx — Transaction Parser](#prettytx---transaction-parser)
   - [pick — Transaction Field Extractor](#pick---transaction-field-extractor)
+  - [addr — Address Validator and Deriver](#addr---address-validator-and-deriver)
+  - [balance — Balance Checker](#balance---balance-checker)
+  - [decodescript — Script Decoder](#decodescript---script-decoder)
+  - [opreturn — OP_RETURN Transaction Builder](#opreturn---op_return-transaction-builder)
+  - [signmsg — Message Signer](#signmsg---message-signer)
+  - [verifymsg — Message Verifier](#verifymsg---message-verifier)
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Transaction Size & Fees](#transaction-size--fees)
@@ -38,6 +44,12 @@ go install ./cmd/txstatus
 go install ./cmd/getraw
 go install ./cmd/prettytx
 go install ./cmd/pick
+go install ./cmd/addr
+go install ./cmd/balance
+go install ./cmd/decodescript
+go install ./cmd/opreturn
+go install ./cmd/signmsg
+go install ./cmd/verifymsg
 ```
 
 ---
@@ -103,14 +115,13 @@ wifinfo --no-color <wif>        # Plain output (for scripting)
 |------|-------|-------------|---------|
 | `--wif` | `-w` | WIF string via flag | - |
 | `--json` | `-j` | Output in JSON format | false |
+| `--uncompressed` | `-u` | Include uncompressed keys, WIFs, and addresses | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output
 
 Shows for both mainnet and testnet:
-- Compressed and uncompressed public keys
-- Compressed and uncompressed addresses
-- Compressed and uncompressed WIF encodings
+- Compressed public keys, addresses, and WIF encodings (uncompressed variants with `-u`)
 - Detected input network and compression
 
 ---
@@ -126,7 +137,7 @@ Creates and signs BSV transactions with smart UTXO selection and automatic fee e
 - Split payments across multiple equal outputs
 - Mainnet/testnet support
 - Debug mode for verbose UTXO selection logging
-- Dust limit protection
+- Every payment output is always created; there are no dust thresholds
 
 #### Usage
 
@@ -150,8 +161,7 @@ Outputs raw transaction hex to stdout.
 | `--sats` | `-s` | Amount in satoshis (0 = send all) | 0 |
 | `--testnet` | `-t` | Use testnet | false |
 | `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
-| `--dust` | `-d` | Dust limit in satoshis | 1 |
-| `--num-outputs` | `-n` | Split into N equal outputs | 1 |
+| `--split` | `-n` | Split into N equal outputs | 1 |
 | `--debug` | - | Enable debug logging | false |
 
 #### How It Works
@@ -279,6 +289,7 @@ carve -w <WIF> -a <addr> -s 1000 | prettytx   # Preview before broadcast
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--raw` | `-r` | Raw transaction hex | - |
+| `--compact` | `-c` | Compact output with truncated scripts | false |
 | `--no-color` | - | Disable colored output | false |
 
 #### Output Format
@@ -372,6 +383,143 @@ Accepts raw hex from argument, `-r` flag, stdin, `file://` path, or HTTP URL.
 
 ---
 
+### addr — Address Validator and Deriver
+
+Validates a BSV address (showing network and hash160) or, given a public key hex, derives the mainnet and testnet addresses.
+
+#### Usage
+
+```bash
+addr <address>                  # Validate an address
+addr <pubkey_hex>               # Derive addresses from a public key
+echo <address> | addr           # From stdin
+addr -j <address>               # JSON output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### balance — Balance Checker
+
+Checks the balance of a BSV address via WhatsOnChain. Accepts an address or a WIF (a WIF is tried first, then an address).
+
+#### Usage
+
+```bash
+balance <address>               # Mainnet balance
+balance <wif>                   # Balance for a WIF's address
+balance -t <address>            # Testnet
+balance -u <address>            # Also list individual UTXOs
+balance -j <address>            # JSON output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--testnet` | `-t` | Use testnet | false |
+| `--utxos` | `-u` | Show individual UTXOs | false |
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### decodescript — Script Decoder
+
+Decodes a hex-encoded script into opcodes (ASM), detects the script type, and extracts addresses.
+
+#### Usage
+
+```bash
+decodescript <hex>                              # Decode from argument
+echo <hex> | decodescript                       # From stdin
+getraw <txid> | pick --output-script 0 | decodescript
+decodescript -j <hex>                           # JSON output
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--json` | `-j` | Output in JSON format | false |
+| `--no-color` | - | Disable colored output | false |
+
+---
+
+### opreturn — OP_RETURN Transaction Builder
+
+Creates a signed transaction with an OP_RETURN data output. Each positional argument becomes a separate pushdata part; data can also be piped via stdin. Funds come from the WIF's UTXOs (WhatsOnChain) and change is returned to the WIF's address. Outputs raw transaction hex to stdout.
+
+#### Usage
+
+```bash
+opreturn -w <WIF> "hello world"                 # Single data push
+opreturn -w <WIF> "part one" "part two"         # Multiple pushdata parts
+echo "hello" | opreturn -w <WIF> -t             # Data from stdin, testnet
+opreturn -w <WIF> "hello" | broadcast -m        # Build and broadcast
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key for signing (required) | - |
+| `--testnet` | `-t` | Use testnet | false |
+| `--fee-per-kb` | `-f` | Fee per kilobyte in satoshis | 100 |
+| `--dust` | `-d` | Dust limit in satoshis (change at or below it is added to the fee) | 1 |
+| `--debug` | - | Enable debug logging | false |
+
+---
+
+### signmsg — Message Signer
+
+Signs a message using the Bitcoin Signed Message format and prints the base64 signature.
+
+#### Usage
+
+```bash
+signmsg -w <WIF> -m "hello"                     # Message via flag
+echo "hello" | signmsg -w <WIF>                 # Message via stdin
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--wif` | `-w` | WIF private key (required) | - |
+| `--message` | `-m` | Message to sign (or pipe via stdin) | - |
+
+---
+
+### verifymsg — Message Verifier
+
+Verifies a Bitcoin Signed Message signature against an address. Exits 0 if valid, 1 if invalid.
+
+#### Usage
+
+```bash
+verifymsg -a <address> -s <base64_sig> -m "hello"
+echo "hello" | verifymsg -a <address> -s <base64_sig>
+SIG=$(signmsg -w <WIF> -m "hello")
+verifymsg -a <address> -s "$SIG" -m "hello"
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--address` | `-a` | BSV address to verify against (required) | - |
+| `--signature` | `-s` | Base64-encoded signature (required) | - |
+| `--message` | `-m` | Message to verify (or pipe via stdin) | - |
+
+---
+
 ## Configuration
 
 ### ARC Configuration (broadcast, txstatus)
@@ -399,7 +547,9 @@ targets:
   wait_for_mining: false
 ```
 
-### WhatsOnChain (carve, getraw)
+The `polling` and `targets` sections are parsed but not currently used; the poll interval is set with `-p`/`--poll-rate`.
+
+### WhatsOnChain (carve, getraw, balance, opreturn)
 
 No configuration needed. Uses public API endpoints:
 - Mainnet: `https://api.whatsonchain.com/v1/bsv/main/`
@@ -552,7 +702,7 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 
 | Endpoint | Used By |
 |----------|---------|
-| `GET /v1/bsv/{net}/address/{addr}/unspent/all` | carve |
+| `GET /v1/bsv/{net}/address/{addr}/unspent/all` | carve, opreturn |
 | `GET /v1/bsv/{net}/tx/{txid}/hex` | getraw |
 
 ### ARC (API key required)
@@ -567,3 +717,7 @@ Invalid or missing API key in `config.yaml`. Check the key and ensure the config
 ## License
 
 See project [LICENSE](LICENSE) file.
+
+---
+
+Documentation up to date as of commit: `8ee1b2e144ffe75cf418ee24090b4dfad65b7ddd`
