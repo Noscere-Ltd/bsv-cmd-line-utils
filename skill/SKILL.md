@@ -1,11 +1,11 @@
 ---
 name: bsv-tx-tools
-description: Build, broadcast, inspect, and dissect BSV transactions using Go CLI tools (carve, broadcast, prettytx, getraw, pick, txstatus, keygen, wifinfo). Use when creating transactions, sending satoshis, parsing raw tx hex, fetching transactions from WhatsOnChain, extracting tx fields for pipelines, checking broadcast status via ARC, generating key pairs, or inspecting WIF keys. Supports mainnet and testnet.
+description: Build, broadcast, inspect, and dissect BSV transactions using Go CLI tools (carve, broadcast, prettytx, getraw, pick, txstatus, keygen, wifinfo, addr, balance, decodescript, opreturn, signmsg, verifymsg). Use when creating transactions, sending satoshis, parsing raw tx hex, fetching transactions from WhatsOnChain, extracting tx fields for pipelines, checking broadcast status via ARC, generating key pairs, inspecting WIF keys, checking balances, decoding scripts, creating OP_RETURN transactions, or signing/verifying messages. Supports mainnet and testnet.
 ---
 
 # BSV Transaction Tools
 
-Eight Go CLI tools for BSV transaction lifecycle: key generation → tx building → broadcasting → inspection → status tracking.
+Fourteen Go CLI tools for BSV transaction lifecycle: key generation → tx building → broadcasting → inspection → status tracking.
 
 All tools support stdin piping for Unix-style composition. Install from `~/noscere/repos/bsv-cmd-line-utils`:
 
@@ -36,7 +36,7 @@ echo <wif> | wifinfo          # From stdin
 
 Detects network (mainnet/testnet) and compression automatically. Shows compressed + uncompressed pubkeys, addresses, and WIFs for both networks.
 
-Flags: `-w` WIF via flag, `-j` JSON, `--no-color` plain output.
+Flags: `-w` WIF via flag, `-j` JSON, `-u` include uncompressed keys, `--no-color` plain output.
 
 ### carve — Build and sign transactions
 
@@ -50,7 +50,7 @@ carve -w <WIF> -a <address> --debug         # Verbose UTXO selection
 
 Outputs raw tx hex to stdout. Fetches UTXOs from WhatsOnChain, uses largest-first selection, auto-calculates fees (min 100 sats).
 
-Flags: `-w` WIF (required), `-a` address (required), `-s` satoshis (0=send all), `-t` testnet, `-f` fee/KB (default 100), `-d` dust limit (default 1), `-n` split count, `--debug`.
+Flags: `-w` WIF (required), `-a` address (required), `-s` satoshis (0=send all), `-t` testnet, `-f` fee/KB (default 100), `-n` split count, `--debug`.
 
 ### broadcast — Broadcast raw transactions via ARC
 
@@ -117,7 +117,7 @@ carve -w <WIF> -a <addr> -s 1000 | prettytx  # Preview before broadcast
 
 Shows: version, inputs (prevtx, vout, script, sequence), outputs (value in sats+BSV, locking script), locktime, txid. Extracts P2PKH addresses from scripts.
 
-Flags: `-r` raw hex, `--no-color`.
+Flags: `-r` raw hex, `-c` compact output, `--no-color`.
 
 ### pick — Extract specific fields from raw transactions
 
@@ -137,6 +137,51 @@ getraw <txid> | pick --output-script 0       # Chain with getraw
 All selectors repeatable. Outputs one hex string per line. Supports `file://path` and URL input.
 
 Flags: `-o` output, `--output-script`, `--output-value`, `-i` input, `--input-script`, `--input-prevtxid`, `--input-prevout`, `--input-sequence`, `-v` version, `-l` locktime, `--txid`.
+
+### addr — Validate an address or derive addresses from a pubkey
+
+```bash
+addr <address>                # Show network and hash160
+addr <pubkey_hex>             # Derive mainnet + testnet addresses
+```
+
+Flags: `-j` JSON, `--no-color`. Accepts stdin.
+
+### balance — Check address balance via WhatsOnChain
+
+```bash
+balance <address_or_wif>      # Mainnet balance
+balance -t -u <address>       # Testnet, list UTXOs
+```
+
+Flags: `-t` testnet, `-u` list UTXOs, `-j` JSON, `--no-color`.
+
+### decodescript — Decode a hex script to ASM
+
+```bash
+decodescript <hex>
+getraw <txid> | pick --output-script 0 | decodescript
+```
+
+Detects script type and extracts addresses. Flags: `-j` JSON, `--no-color`.
+
+### opreturn — Build a signed OP_RETURN transaction
+
+```bash
+opreturn -w <WIF> "hello" "world"     # Each argument is a pushdata part
+echo "hello" | opreturn -w <WIF> -t   # Data from stdin, testnet
+```
+
+Outputs raw tx hex. Flags: `-w` WIF (required), `-t` testnet, `-f` fee/KB (default 100), `-d` dust limit (default 1), `--debug`.
+
+### signmsg / verifymsg — Bitcoin Signed Message
+
+```bash
+signmsg -w <WIF> -m "hello"                      # Prints base64 signature
+verifymsg -a <address> -s <sig> -m "hello"       # Exit 0 valid, 1 invalid
+```
+
+Message can also be piped via stdin. signmsg flags: `-w` WIF (required), `-m` message. verifymsg flags: `-a` address (required), `-s` signature (required), `-m` message.
 
 ## Common Workflows
 
@@ -199,7 +244,7 @@ Fee: `max(100, size × feePerKB / 1000)`. Default 100 sat/KB. Minimum floor: 100
 ## Notes
 
 - `broadcast` and `txstatus` need `config.yaml` with ARC API keys
-- `carve` and `getraw` use WhatsOnChain API directly (no auth, ~3 req/sec rate limit)
+- `carve`, `getraw`, `balance`, and `opreturn` use WhatsOnChain API directly (no auth, ~3 req/sec rate limit)
 - All tools accept input from stdin, flags, or positional args
 - WIF keys: mainnet prefix `5`/`K`/`L`, testnet prefix `c`/`9`
 - Never commit WIF keys to version control
