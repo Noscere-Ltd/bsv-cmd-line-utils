@@ -2263,7 +2263,7 @@ jobs:
       # --------------------------------------------------------------------
       - name: 📤 Upload performance cache statistics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cache-stats-coverage
           path: cache-stats-coverage.json
@@ -2274,7 +2274,7 @@ jobs:
       # --------------------------------------------------------------------
       - name: 📤 Upload coverage statistics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-stats-internal
           path: coverage-stats-internal-*.json
@@ -2306,7 +2306,7 @@ jobs:
       - name: 📤 Upload coverage history artifacts
         # Upload history for all branches to preserve trend data
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-history-${{ inputs.commit-sha }}
           path: .github/coverage/history/*.json
@@ -2451,7 +2451,7 @@ jobs:
 
       - name: 📤 Upload coverage statistics (Codecov)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-stats-codecov
           path: coverage-stats-codecov-*.json
