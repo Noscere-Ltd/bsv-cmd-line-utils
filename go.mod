@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/bsv-blockchain/go-sdk v1.7.3
-	github.com/mrz1836/go-whatsonchain v1.3.0
+	github.com/mrz1836/go-whatsonchain v1.4.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
 	golang.design/x/clipboard v0.11.0
